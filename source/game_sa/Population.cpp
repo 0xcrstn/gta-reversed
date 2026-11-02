@@ -1088,7 +1088,7 @@ void CPopulation::ChooseCivilianCoupleOccupations(eModelID& husbandOccupation, e
 eModelID CPopulation::ChooseCivilianOccupationForVehicle(bool mustBeMale, CVehicle* vehicle) {
     const auto vehClass = vehicle->GetVehicleModelInfo()->m_nVehicleClass;
     for (size_t i{}; i < 2; i++) { // In 0th iteration we check if the model is inside the vehicle already, in the second we dont
-        for (size_t k{}; k < 4; k++) {
+        for (size_t k{}; k <= 4; k++) { // 0x6133BB - In the last iteration the ref count doesn't matter
             for (auto pedModelId : CStreaming::ms_pedsLoaded) {
                 if (pedModelId == MODEL_INVALID) {
                     continue;
@@ -1117,7 +1117,17 @@ eModelID CPopulation::ChooseCivilianOccupationForVehicle(bool mustBeMale, CVehic
                         continue;
                     }
                 }
-                if (i != 0 || !vehicle->IsPedOfModelInside(pedModelId)) {
+                if (mustBeMale && mi->GetPedType() != PED_TYPE_CIVMALE) {
+                    continue;
+                }
+                // 0x613357 - Only the driver and the first 3 passenger seats are checked
+                const auto IsAlreadyInVehicle = [&] {
+                    return vehicle->IsDriver(pedModelId)
+                        || rng::any_of(vehicle->m_apPassengers | rngv::take(3), [&](const CPed* passenger) {
+                               return passenger && passenger->GetModelId() == pedModelId;
+                           });
+                };
+                if (i != 0 || !IsAlreadyInVehicle()) {
                     return pedModelId;
                 }
             }
