@@ -423,10 +423,10 @@ bool CPopulation::PedMICanBeCreatedAtThisAttractor(eModelID modelId, const char*
     }
 
     if (NameIsAnyOf("STRIPM")) {
-        return pedType == PED_TYPE_CIVFEMALE;
+        return pedType != PED_TYPE_CIVFEMALE;
     }
 
-    return false;
+    return true;
 }
 
 // 0x611450
@@ -974,63 +974,61 @@ eModelID CPopulation::ChooseCivilianOccupation(
     bool         isAtAttractor,
     const char*  attractorScriptName
 ) {
-    UNUSED(attractorScriptName);
-
-    const size_t maxModelsToCheck = [&] {
-        // We do some extra math here, so in case the size of the array is ever changed, it scales automagically!
-        const auto nMaxModels = CStreaming::ms_pedsLoaded.size();
-        if (doTestForUsedOccupations) {
-            return nMaxModels * 7 / 8; // 7
+    // The loaded models are tried in the order of their reference count (how many peds use them), least used first
+    const auto maxRefCount = [&] {
+        if (!doTestForUsedOccupations) {
+            return 7;
         }
         if (!CGame::CanSeeOutSideFromCurrArea() && NumberOfPedsInUseInterior > 20) {
-            return nMaxModels * 5 / 8; // 5
+            return 5;
         }
-        return nMaxModels * 3 / 8; // 3
+        return 3;
     }();
 
-    for (size_t i{}; i < maxModelsToCheck; i++) {
-        const auto modelId = CStreaming::ms_pedsLoaded[i];
-        if (modelId == MODEL_INVALID) {
-            continue;
+    for (auto refCount = 0; refCount < maxRefCount; refCount++) {
+        for (const auto modelId : CStreaming::ms_pedsLoaded) {
+            if (modelId == MODEL_INVALID) {
+                continue;
+            }
+            if (!CStreaming::IsModelLoaded(modelId)) { // So why the fuck is it in the `ms_pedsLoaded` array if it's not loaded?
+                continue;
+            }
+            const auto mi = CModelInfo::GetPedModelInfo(modelId);
+            if (mi->m_nRefCount != refCount) {
+                continue;
+            }
+            if (mustNotBeThisModel == modelId) {
+                continue;
+            }
+            if (CGame::CanSeeOutSideFromCurrArea() && !CPopCycle::PedIsAcceptableInCurrentZone(modelId)) {
+                continue;
+            }
+            if (bOnlyOnFoots && (mi->m_nCarsCanDriveMask & 0x1000) == 0) {
+                continue;
+            }
+            if (mustBeMale && mi->GetPedType() != PED_TYPE_CIVMALE) {
+                continue;
+            }
+            if (mustBeFemale && mi->GetPedType() != PED_TYPE_CIVFEMALE) {
+                continue;
+            }
+            if (mustUseThisAnimGroup != ANIM_GROUP_NONE && mi->m_nAnimType != mustUseThisAnimGroup) {
+                continue;
+            }
+            if (isAtAttractor && (!PedMICanBeCreatedAtAttractor(modelId) || !PedMICanBeCreatedAtThisAttractor(modelId, attractorScriptName))) {
+                continue;
+            }
+            if (!CGame::CanSeeOutSideFromCurrArea() && !PedMICanBeCreatedInInterior(modelId)) {
+                continue;
+            }
+            if (mustBeCompatibleWithThisPedStat != ePedStats::NONE && !ArePedStatsCompatible(mi->GetPedStatType(), mustBeCompatibleWithThisPedStat)) {
+                continue;
+            }
+            if (CWeather::Rain >= 0.1f && IsSunbather(modelId)) {
+                continue;
+            }
+            return modelId;
         }
-        if (!CStreaming::IsModelLoaded(modelId)) { // So why the fuck is it in the `ms_pedsLoaded` array if it's not loaded?
-            continue;
-        }
-        const auto mi = CModelInfo::GetPedModelInfo(modelId);
-        if (mi->m_nRefCount != i) { // TODO/BUG: Why?
-            continue;
-        }
-        if (mustNotBeThisModel == modelId) {
-            continue;
-        }
-        if (CGame::CanSeeOutSideFromCurrArea() && !CPopCycle::PedIsAcceptableInCurrentZone(modelId)) {
-            continue;
-        }
-        if (bOnlyOnFoots && (mi->m_nCarsCanDriveMask & 0x1000) == 0) {
-            continue;
-        }
-        if (mustBeMale && mi->GetPedType() != PED_TYPE_CIVMALE) {
-            continue;
-        }
-        if (mustBeFemale && mi->GetPedType() != PED_TYPE_CIVFEMALE) {
-            continue;
-        }
-        if (mustUseThisAnimGroup != ANIM_GROUP_NONE && mi->m_nAnimType != mustUseThisAnimGroup) {
-            continue;
-        }
-        if (isAtAttractor && !PedMICanBeCreatedAtAttractor(modelId)) {
-            continue;
-        }
-        if (!CGame::CanSeeOutSideFromCurrArea() && !PedMICanBeCreatedInInterior(modelId)) {
-            continue;
-        }
-        if (mustBeCompatibleWithThisPedStat != ePedStats::NONE && !ArePedStatsCompatible(mi->GetPedStatType(), mustBeCompatibleWithThisPedStat)) {
-            continue;
-        }
-        if (CWeather::Rain >= 0.1f && IsSunbather(modelId)) {
-            continue;
-        }
-        return modelId;
     }
     return doTestForUsedOccupations
         ? MODEL_INVALID
