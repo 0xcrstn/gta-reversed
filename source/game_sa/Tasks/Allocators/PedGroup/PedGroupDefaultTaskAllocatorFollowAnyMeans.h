@@ -28,7 +28,7 @@ public:
                 continue;
             }
             assert(!tp.Task);
-            if (ped == leader) {
+            if (tp.Ped != leader) { // Followers follow the leader, the leader wanders
                 tp.Task = new CTaskComplexFollowLeaderAnyMeans{
                     pedGroup,
                     leader,
