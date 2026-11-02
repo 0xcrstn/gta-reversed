@@ -152,8 +152,9 @@ void CAEStreamingChannel::SetFrequencyScalingFactor(float factor) {
         m_pDirectSoundBuffer->SetVolume(DSBVOLUME_MIN);
         m_pDirectSoundBuffer->Play(0, 0, m_bLooped ? DSBPLAY_LOOPING : 0);
 
-        if (!AESmoothFadeThread.RequestFade(m_pDirectSoundBuffer, m_Volume, 35, true))
+        if (!AESmoothFadeThread.RequestFade(m_pDirectSoundBuffer, m_Volume, 35, false)) { // 0x4F212C
             m_pDirectSoundBuffer->SetVolume(static_cast<int32>(m_Volume * 100.0f));
+        }
 
         m_nState = StreamingChannelState::Started;
     }
