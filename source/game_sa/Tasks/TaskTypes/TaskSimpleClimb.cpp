@@ -711,10 +711,10 @@ void CTaskSimpleClimb::GetCameraTargetPos(CPed* ped, CVector& outTargetPt) {
     switch (m_Anim->m_AnimId) {
     case ANIM_ID_FALL_GLIDE:
     case ANIM_ID_CLIMB_JUMP2FALL:    offset = { ms_fVaultOffsetHorz, ms_fVaultOffsetVert };                                                                                                  break;
-    case ANIM_ID_CLIMB_PULL:         offset = lerp<CVector2D>({ ms_fHangingOffsetHorz, ms_fAtEdgeOffsetHorz }, { ms_fHangingOffsetVert, ms_fAtEdgeOffsetVert }, m_Anim->GetTimeProgress()); break;
-    case ANIM_ID_CLIMB_STAND:        offset = lerp<CVector2D>({ ms_fAtEdgeOffsetHorz, ms_fStandUpOffsetHorz }, { ms_fAtEdgeOffsetVert, ms_fStandUpOffsetVert }, m_Anim->GetTimeProgress()); break;
+    case ANIM_ID_CLIMB_PULL:         offset = lerp<CVector2D>({ ms_fHangingOffsetHorz, ms_fHangingOffsetVert }, { ms_fAtEdgeOffsetHorz, ms_fAtEdgeOffsetVert }, m_Anim->GetTimeProgress()); break;
+    case ANIM_ID_CLIMB_STAND:        offset = lerp<CVector2D>({ ms_fAtEdgeOffsetHorz, ms_fAtEdgeOffsetVert }, { ms_fStandUpOffsetHorz, ms_fStandUpOffsetVert }, m_Anim->GetTimeProgress()); break;
     case ANIM_ID_CLIMB_STAND_FINISH: offset = { ms_fStandUpOffsetHorz, ms_fStandUpOffsetVert };                                                                                              break;
-    case ANIM_ID_CLIMB_JUMP_B:       offset = lerp<CVector2D>({ ms_fAtEdgeOffsetHorz, ms_fVaultOffsetHorz }, { ms_fAtEdgeOffsetVert, ms_fVaultOffsetVert }, m_Anim->GetTimeProgress());     break;
+    case ANIM_ID_CLIMB_JUMP_B:       offset = lerp<CVector2D>({ ms_fAtEdgeOffsetHorz, ms_fAtEdgeOffsetVert }, { ms_fVaultOffsetHorz, ms_fVaultOffsetVert }, m_Anim->GetTimeProgress()); break;
     default:                         return;
     }
 
