@@ -100,7 +100,7 @@ void CCarAI::AddPoliceCarOccupants(CVehicle* vehicle, bool bAlwaysCreatePassenge
         if (FindPlayerPed()->GetWantedLevel() > eWantedLevel::WANTED_LEVEL_1) {
             const auto drvr = vehicle->SetUpDriver(PED_TYPE_NONE, false, false);
             CTaskSimpleCarSetPedOut{ vehicle, TARGET_DOOR_DRIVER, true }.ProcessPed(drvr);
-            drvr->AttachPedToEntity(vehicle, CVector(0.f, 0.f, 0.f), 0, TWO_PI, WEAPON_PISTOL);
+            drvr->AttachPedToEntity(vehicle, CVector(0.f, 3.f, 2.f), 0, TWO_PI, WEAPON_PISTOL); // 0x41C311
             drvr->bStayInSamePlace = true;
             drvr->GetTaskManager().SetTask(
                 new CTaskComplexKillPedFromBoat{ FindPlayerPed() },
@@ -171,6 +171,7 @@ void CCarAI::BackToCruisingIfNoWantedLevel(CVehicle* vehicle) {
     vehicle->m_autoPilot.m_nCarMission = CCullZones::NoPolice()
         ? MISSION_NONE
         : MISSION_CRUISE;
+    vehicle->vehicleFlags.bSirenOrAlarm     = false; // 0x41C02D
 }
 
 // 0x41C050
@@ -380,7 +381,8 @@ float CCarAI::GetCarToGoToCoorsStraightLine(CVehicle* veh, const CVector& coors,
 
 // 0x41D350
 float CCarAI::GetCarToParkAtCoors(CVehicle* veh, const CVector& coors) {
-    veh->vehicleFlags.bCanPark = true;
+    GetCarToGoToCoors(veh, coors, DRIVING_STYLE_STOP_FOR_CARS, true);
+    veh->vehicleFlags.bParking = true;
     veh->m_autoPilot.SetCruiseSpeed(10);
     return (veh->GetPosition2D() - coors).Magnitude();
 }
