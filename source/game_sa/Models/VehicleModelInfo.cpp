@@ -343,7 +343,8 @@ int32 CVehicleModelInfo::ChooseComponent()
         return ::ChooseComponent(m_extraComps.nExtraARule, m_extraComps.nExtraAComp);
     } else if (CGeneral::GetRandomNumberInRange(0, 3) < 2) {
         int32 anVariations[6];
-        auto numComps = (size_t)GetListOfComponentsNotUsedByRules(m_extraComps.m_nComps, m_pVehicleStruct->m_nNumExtras, anVariations);
+        // The original sign-extends the extras count (`movsx`)
+        auto numComps = (size_t)GetListOfComponentsNotUsedByRules(m_extraComps.m_nComps, (int8)m_pVehicleStruct->m_nNumExtras, anVariations);
         if (numComps) {
             return anVariations[CGeneral::GetRandomNumberInRange(numComps)];
         }
@@ -362,7 +363,8 @@ int32 CVehicleModelInfo::ChooseSecondComponent()
         return ::ChooseComponent(m_extraComps.nExtraBRule, m_extraComps.nExtraBComp);
     } else if (m_extraComps.nExtraARule && IsValidCompRule(m_extraComps.nExtraARule) && CGeneral::GetRandomNumberInRange(0, 3) < 2) {
         int32 anVariations[6];
-        auto numComps = GetListOfComponentsNotUsedByRules(m_extraComps.m_nComps, m_pVehicleStruct->m_nNumExtras, anVariations);
+        // The original sign-extends the extras count (`movsx`)
+        auto numComps = GetListOfComponentsNotUsedByRules(m_extraComps.m_nComps, (int8)m_pVehicleStruct->m_nNumExtras, anVariations);
         if (numComps)
             return anVariations[CGeneral::GetRandomNumberInRange(0, numComps)];
     }
