@@ -229,9 +229,10 @@ bool CPopCycle::IsPedAppropriateForCurrentZone(int32 modelIndex) {
     }
 
     // Check if any group active in this zone contains the given model
-    for (auto grpId = 0; grpId < POPCYCLE_TOTAL_GROUPS; grpId++) {
+    // 0x6101F6: Only the groups with a percentage are checked
+    for (auto grpId = 0; grpId < POPCYCLE_TOTAL_GROUP_PERCS; grpId++) {
         // Check if this group is active now
-        if (!m_nPercTypeGroup[m_nCurrentTimeIndex][m_nCurrentTimeOfWeek][m_pCurrZoneInfo->PopType]) {
+        if (!GetCurrentPercTypeGroup(grpId)) {
             continue;
         }
 
