@@ -35,11 +35,13 @@ CEventPlayerCommandToGroup* CEventPlayerCommandToGroup::Constructor(ePlayerGroup
 bool CEventPlayerCommandToGroup::AffectsPedGroup(CPedGroup* pedGroup)
 {
     CPed* leader = pedGroup->GetMembership().GetLeader();
-    if (leader && leader->IsPlayer()) {
-        for (int32 i = 0; i < TOTAL_PED_GROUP_FOLLOWERS; i++) {
-            CPed* member = pedGroup->GetMembership().GetMember(i);
-            if (member && member->GetAreaCode() != leader->GetAreaCode()) 
-                return false;
+    if (!leader || !leader->IsPlayer()) { // 0x4B24E5, 0x4B24F0
+        return false;
+    }
+    for (int32 i = 0; i < TOTAL_PED_GROUP_FOLLOWERS; i++) {
+        CPed* member = pedGroup->GetMembership().GetMember(i);
+        if (member && member->GetAreaCode() != leader->GetAreaCode()) {
+            return false;
         }
     }
     return true;
