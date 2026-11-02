@@ -347,9 +347,9 @@ void CGarages::SetTargetCarForMissionGarage(int16 garageId, CVehicle* vehicle) {
 
 // 0x447B80
 void CGarages::TriggerMessage(const char* tagMsg, int16 numInStr1, uint16 time, int16 numInStr2) {
-    if (   strcmp(tagMsg, MessageIDString) != 0 // Different strings
+    if (strcmp(tagMsg, MessageIDString) != 0 // Different strings
         || CTimer::GetTimeInMS() < MessageStartTime
-        || CTimer::GetTimeInMS() >= MessageEndTime
+        || CTimer::GetTimeInMS() > MessageEndTime // NOTE: `>` here, but `>=` in `PrintMessages`
     ) {
         strcpy_s(MessageIDString, tagMsg);
         MessageStartTime = CTimer::GetTimeInMS();
@@ -389,11 +389,11 @@ void CGarages::PrintMessages() {
         CFont::PrintString(SCREEN_WIDTH / 2.f, SCREEN_STRETCH_Y(155.f), gGxtString);
     };
 
-    if (MessageNumberInString < 0) {
-        if (MessageNumberInString2 < 0) {
+    if (MessageNumberInString2 < 0) {
+        if (MessageNumberInString < 0) {
             CFont::PrintString(SCREEN_WIDTH / 2.f, SCREEN_STRETCH_Y(155.f), TheText.Get(MessageIDString));
         } else {
-            DrawFormattedString(MessageNumberInString2, -1, -1, -1, -1, -1);
+            DrawFormattedString(MessageNumberInString, -1, -1, -1, -1, -1);
         }
     } else {
         DrawFormattedString(MessageNumberInString, MessageNumberInString2, -1, -1, -1, -1);
