@@ -276,7 +276,7 @@ bool CIdleCam::IsTargetValid(CEntity* target) {
         return true;
     }
 
-    return m_TargetLOSCounter++ < m_TargetLOSFramestoReject;
+    return m_TargetLOSCounter++ <= m_TargetLOSFramestoReject;
 }
 
 // 0x50A280
@@ -336,6 +336,9 @@ void CIdleCam::ProcessTargetSelection() {
     }
 
     if (!m_Target) {
+        // The original stores the player here without registering a reference,
+        // so `SetTarget` slerps from `m_LastIdlePos` (instead of the camera's front)
+        m_Target = FindPlayerPed();
         SetTargetPlayer();
     }
 
