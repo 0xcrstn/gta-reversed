@@ -251,12 +251,10 @@ void BoneNode_c::AddChild(BoneNode_c* children) {
 
 // 0x616CD0
 void BoneNode_c::CalcWldMat(const RwMatrix* boneMatrix) {
-    RwMatrix rotMatrix = [this] {
-        CMatrix mat{};
-        mat.SetRotate(CQuaternion{ m_Orientation });
-        mat.GetPosition() = m_Pos;
-        return mat.ToRwMatrix();
-    }();
+    // 0x616CF9: Scales by `2 / |q|^2`, so `m_Orientation` doesn't have to be a unit quaternion
+    RwMatrix rotMatrix;
+    RtQuatConvertToMatrix(&m_Orientation, &rotMatrix);
+    rotMatrix.pos = m_Pos;
 
     rwMatrixSetFlags(&rotMatrix, rwMATRIXTYPEORTHONORMAL);
     RwMatrixMultiply(&m_WorldMat, &rotMatrix, boneMatrix);
