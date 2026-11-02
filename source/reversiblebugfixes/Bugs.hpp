@@ -69,6 +69,12 @@ inline const ReversibleBugFix CAEVehicleAudioEntity_PlayAircraftSound_VolumeFix{
     .Description = "Original code didn't account for event base volume",
     .Credit      = "Pirulax"
 };
+inline const ReversibleBugFix CAEWaveDecoder_BlockAlign_DivisionByZero{
+    .Name        = "CAEWaveDecoder::GetStreamLengthMs - Division-by-zero on a zero block align",
+    .Description = "A user track WAV whose header has a `blockAlign` of 0 crashed the game with a division-by-zero. "
+                   "The fix rejects such files (they fail to initialise) instead.",
+    .Credit      = "Contributors"
+};
 inline const ReversibleBugFix CPathFind_SwitchRoadsOffInArea_StrayAreas{
     .Name        = "CPathFind::SwitchRoadsOffInArea Stray-Areas",
     .Description = "Fix multiple issues related to saving unused path areas after missions",
