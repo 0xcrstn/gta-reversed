@@ -182,8 +182,10 @@ long CAEWMADecoder::GetStreamPlayTimeMs() {
 
 // 0x502b50
 void CAEWMADecoder::SetCursor(unsigned long pos) {
-    if (m_bInitialized)
-        syncReader->SetRange(pos * 10000ULL, 0LL);
+    if (m_bInitialized) {
+        // BUG: The original multiplies in 32 bits (`imul edx, edx, 10000`), so the position wraps around from 429497 ms (~7m09s)
+        syncReader->SetRange(notsa::bugfixes::CAEWMADecoder_SetCursor_Overflow ? pos * 10'000ULL : static_cast<uint64>(static_cast<uint32>(pos * 10'000u)), 0LL);
+    }
 }
 
 // 0x502ab0

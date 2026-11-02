@@ -96,6 +96,11 @@ inline const ReversibleBugFix CPool_DestructOnClear{
     .Description = "Destruct all objects in the pool before deallocating their memory (So that pool objects can clean up after themselves)",
     .Credit      = "Pirulax"
 };
+inline const ReversibleBugFix CAEWMADecoder_SetCursor_Overflow{
+    .Name        = "CAEWMADecoder::SetCursor - Seek position overflow",
+    .Description = "The original computes the seek position (in 100 ns units) in 32 bits, so seeking 429497 ms (~7m09s) or more into a WMA user track wraps around",
+    .Credit      = "Contributors"
+};
 inline const ReversibleBugFix CTaskSimpleClimb_ProcessPed_SettleSpeedFrameRate{
     .Name        = "Climb settle speed at high frame rates",
     .Description = "Bound the climb's settle step the way the coarse step above it is bounded, so a few centimetres of offset do not become a killing fall speed above 60 FPS",
