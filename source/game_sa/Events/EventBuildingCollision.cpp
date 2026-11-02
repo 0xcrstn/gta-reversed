@@ -40,28 +40,35 @@ CEventBuildingCollision* CEventBuildingCollision::Constructor(int16 pieceType, f
 // 0x4AD070
 bool CEventBuildingCollision::AffectsPed(CPed* ped)
 {
-    if (!ped->IsPlayer()
-        && ped->IsAlive()
-        && m_moveState != PEDMOVE_STILL
-        && (m_impactNormal.z <= 0.707f || m_building->m_bIsTempBuilding)
-        && !ped->m_pAttachedTo)
-    {
-        CVector direction(m_impactNormal.x, m_impactNormal.y, 0.0f);
-        direction.Normalise();
-        float dotProduct = DotProduct(direction, ped->GetForward());
-        if (dotProduct <= -0.422f) {
-            if (ped->GetEventHandler().GetCurrentEventType() == EVENT_BUILDING_COLLISION) {
-                auto buildingColEvent = static_cast<CEventBuildingCollision*>(ped->GetEventHandlerHistory().GetCurrentEvent());
-                if (buildingColEvent->m_building == m_building && dotProduct > -0.5f) 
-                    return false;
-            }
-            // CEventPotentialWalkIntoBuilding doesn't even exist on PC
-            assert (ped->GetEventHandler().GetCurrentEventType() != EVENT_POTENTIAL_WALK_INTO_BUILDING);
-            if (dotProduct <= -0.5f && !ped->GetTaskManager().Find<TASK_COMPLEX_CLIMB>())
-                return ped->GetEventHandler().GetCurrentEventType() != EVENT_GUN_AIMED_AT;
+    if (ped->IsPlayer() || !ped->IsAlive() || m_moveState == PEDMOVE_STILL) {
+        return false;
+    }
+    if (m_impactNormal.z > 0.707f && !m_building->m_bIsTempBuilding) {
+        return false;
+    }
+    if (ped->m_pAttachedTo) {
+        return false;
+    }
+
+    CVector direction(m_impactNormal.x, m_impactNormal.y, 0.0f);
+    direction.Normalise();
+    const auto dotProduct = direction.Dot(ped->GetForward());
+    if (dotProduct > -0.422f) {
+        return false;
+    }
+
+    // 0x4AD144, 0x4AD182: If the ped is already handling a collision with this building, this one only counts if it's head-on enough
+    if (notsa::contains({ EVENT_BUILDING_COLLISION, EVENT_POTENTIAL_WALK_INTO_BUILDING }, ped->GetEventHandler().GetCurrentEventType())) {
+        const auto* const buildingColEvent = static_cast<CEventBuildingCollision*>(ped->GetEventHandlerHistory().GetCurrentEvent());
+        if (buildingColEvent->m_building == m_building && dotProduct > -0.5f) {
+            return false;
         }
     }
-    return false;
+
+    if (ped->GetTaskManager().Find<TASK_COMPLEX_CLIMB>()) {
+        return false;
+    }
+    return ped->GetEventHandler().GetCurrentEventType() != EVENT_GUN_AIMED_AT;
 }
 
 // 0x4AD1E0
