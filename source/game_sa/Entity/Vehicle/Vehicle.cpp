@@ -1391,6 +1391,8 @@ bool CVehicle::AddPassenger(CPed* passenger, uint8 seatIdx) {
         return AddPassenger(passenger);
     }
 
+    ApplyTurnForceToOccupantOnEntry(passenger); // Even if the seat is then rejected
+
     // Check if seat is valid
     if (seatIdx >= m_nMaxPassengers) {
         return false;
