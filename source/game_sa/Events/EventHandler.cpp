@@ -2275,8 +2275,8 @@ void CEventHandler::ComputeShotFiredResponse(CEventGunShot* e, CTask* tactive, C
             }
             return new CTaskComplexSmartFleeEntity{e->m_firedBy, false, 60.f};
         }
-        case TASK_COMPLEX_KILL_PED_ON_FOOT_STEALTH: // 0x4BCB16
-            return new CTaskComplexKillPedOnFootStealth{ firedByPed };
+        case TASK_COMPLEX_KILL_PED_ON_FOOT_STEALTH: // 0x4BCB16 - The entity type isn't checked here
+            return new CTaskComplexKillPedOnFootStealth{ e->m_firedBy->AsPed() };
         case TASK_COMPLEX_KILL_CRIMINAL: { // 0x4BCA16
             if (!firedByPed || firedByPed->m_nPedType == m_Ped->m_nPedType || firedByPed->IsPlayer()) {
                 return nullptr;
@@ -2284,7 +2284,7 @@ void CEventHandler::ComputeShotFiredResponse(CEventGunShot* e, CTask* tactive, C
             if (IsKillTaskAppropriate(m_Ped, firedByPed, *e)) { // 0x4BCA51 - Inverted
                 return new CTaskComplexKillCriminal{ firedByPed, false }; // 0x4BCA7F
             }
-            return new CTaskComplexSmartFleeEntity{ e->m_firedBy, false, 60.f };
+            return new CTaskComplexSmartFleeEntity{ e->m_firedBy, false, 60.f, 1'000'000, 1'000, 1.f, PEDMOVE_WALK }; // 0x4BCACB
         }
         case TASK_COMPLEX_SMART_FLEE_ENTITY: // 0x4BC8CE
             return new CTaskComplexSmartFleeEntity{ e->m_firedBy, true, 60.f };
@@ -2299,11 +2299,11 @@ void CEventHandler::ComputeShotFiredResponse(CEventGunShot* e, CTask* tactive, C
             return new CTaskSimpleDuck{ DUCK_STANDALONE, 0x967Fu, -1 };
         case TASK_NONE:
             return nullptr;
-        case TASK_SIMPLE_DUCK: {
+        case TASK_SIMPLE_DUCK: { // 0x4BC774 - No response if already ducking
             if (m_Ped->GetIntelligence()->GetTaskDuck(true)) {
-                return new CTaskSimpleDuck{ DUCK_STANDALONE, 3000, -1 };
+                return nullptr;
             }
-            return nullptr;
+            return new CTaskSimpleDuck{ DUCK_STANDALONE, 3'000, -1 };
         }
         default:
             NOTSA_UNREACHABLE(); // not sure
