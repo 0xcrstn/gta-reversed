@@ -488,7 +488,7 @@ CVector CCollision::GetClosestPtOnLine(const CVector& l0, const CVector& l1, con
 }
 
 // 0x417FD0
-void CCollision::ClosestPointOnLine(const CVector& l0, const CVector& l1, const CVector& point, CVector& closest) {
+void CCollision::ClosestPointOnLine(const CVector& point, const CVector& l0, const CVector& l1, CVector& closest) {
     ZoneScoped;
 
     closest = GetClosestPtOnLine(l0, l1, point);
