@@ -252,7 +252,7 @@ CTask* CTaskComplexCopInCar::ControlSubTask(CPed* ped) {
             return m_pSubTask;
         }
 
-        if (m_IsDriver) {
+        if (!m_IsDriver) { // Only the driver goes back to the car (0x690094)
             return m_pSubTask;
         }
 
@@ -265,6 +265,10 @@ CTask* CTaskComplexCopInCar::ControlSubTask(CPed* ped) {
         }
 
         if (m_Vehicle->IsOnItsSide()) {
+            return m_pSubTask;
+        }
+
+        if (m_Vehicle->IsUpsideDown()) { // 0x6900D3
             return m_pSubTask;
         }
 
@@ -328,12 +332,13 @@ CTask* CTaskComplexCopInCar::ControlSubTask(CPed* ped) {
                     m_Timer1.m_bStarted = false;
                     return CreateNextSubTask(ped);
                 }
-                return m_pSubTask;
             }
+            return m_pSubTask; // Keep driving until the timer runs out (0x68FFE8)
         }
 
         m_flag0x2 = false;
         m_flag0x4 = false;
+        m_Timer1.Stop(); // 0x68FFB9
         m_bIsSuspectInCar = m_Suspect->bInVehicle;
         return CreateSubTask(TASK_COMPLEX_CAR_DRIVE_MISSION, ped);
     }
