@@ -2,6 +2,15 @@
 
 #include "TaskSimpleGangDriveBy.h"
 
+void CTaskSimpleGangDriveBy::InjectHooks() {
+    RH_ScopedVirtualClass(CTaskSimpleGangDriveBy, 0x86D944, 9);
+    RH_ScopedCategory("Tasks/TaskTypes");
+
+    RH_ScopedVMTInstall(Clone, 0x6236D0);
+    RH_ScopedVMTInstall(MakeAbortable, 0x62D290, { .Reversed = false });
+    RH_ScopedVMTInstall(ProcessPed, 0x62D3B0, { .Reversed = false });
+}
+
 CTaskSimpleGangDriveBy::CTaskSimpleGangDriveBy(CEntity* target, const CVector* targetPos, float abortRange, int8 frequencyPercentage, eDrivebyStyle drivebyStyle, bool seatRHS) {
     m_bSeatRHS             = seatRHS;
     m_nDrivebyStyle        = drivebyStyle;
@@ -25,6 +34,7 @@ CTaskSimpleGangDriveBy::CTaskSimpleGangDriveBy(CEntity* target, const CVector* t
     m_nRequiredAnimID      = ANIM_ID_NO_ANIMATION_SET;
     m_nRequiredAnimGroup   = ANIM_GROUP_DEFAULT;
     m_pWeaponInfo          = nullptr;
+    m_vecCoords            = CVector{}; // Zeroed even if `targetPos` is set
     CEntity::SafeRegisterRef(m_pTargetEntity);
     if (targetPos) {
         m_vecCoords = *targetPos;
@@ -42,15 +52,20 @@ CTaskSimpleGangDriveBy::~CTaskSimpleGangDriveBy()
     CEntity::SafeCleanUpRef(m_pTargetEntity);
 }
 
+// 0x6236D0
 CTask* CTaskSimpleGangDriveBy::Clone() const {
-    return plugin::CallMethodAndReturn<CTask*, 0x6236D0, const CTask*>(this);
+    auto* const task           = new CTaskSimpleGangDriveBy{ m_pTargetEntity, &m_vecCoords, m_fAbortRange, m_nFrequencyPercentage, m_nDrivebyStyle, m_bSeatRHS };
+    task->m_bFromScriptCommand = m_bFromScriptCommand;
+    return task;
 }
 
+// 0x62D290
 bool CTaskSimpleGangDriveBy::MakeAbortable(CPed* ped, eAbortPriority priority, const CEvent* event)
 {
     return plugin::CallMethodAndReturn<bool, 0x62D290, CTask*, CPed*, int32, const CEvent*>(this, ped, priority, event);
 }
 
+// 0x62D3B0
 bool CTaskSimpleGangDriveBy::ProcessPed(CPed* ped)
 {
     return plugin::CallMethodAndReturn<bool, 0x62D3B0, CTask*, CPed*>(this, ped);
