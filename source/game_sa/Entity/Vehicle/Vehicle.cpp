@@ -5301,16 +5301,19 @@ void CVehicle::DoHeadLightBeam(eVehicleLightId lightId, CMatrix& vehicleMatrix, 
     };
     const uint8 alphas[] = { alpha, alpha, 0, 0, alpha };
 
-    RxObjSpace3DVertex vertices[5];
-    for (auto i = 0u; i < std::size(vertices); i++) {
+    // The original builds the beam in the shared temp buffers, and leaves their counters set
+    for (auto i = 0u; i < std::size(posn); i++) {
         const RwRGBA color = { 255, 255, 255, alphas[i] };
-        RxObjSpace3DVertexSetPreLitColor(&vertices[i], &color);
-        RxObjSpace3DVertexSetPos(&vertices[i], &posn[i]);
+        RxObjSpace3DVertexSetPreLitColor(&TempBufferVertices.m_3d[i], &color);
+        RxObjSpace3DVertexSetPos(&TempBufferVertices.m_3d[i], &posn[i]);
     }
+    constexpr RxVertexIndex indices[] = { 0, 1, 4, 1, 3, 4, 2, 3, 4, 0, 2, 4 };
+    rng::copy(indices, aTempBufferIndices);
+    uiTempBufferVerticesStored = std::size(posn);
+    uiTempBufferIndicesStored  = std::size(indices);
 
-    if (RwIm3DTransform(vertices, std::size(vertices), nullptr, rwIM3D_VERTEXRGBA | rwIM3D_VERTEXXYZ)) {
-        RxVertexIndex indices[] = { 0, 1, 4, 1, 3, 4, 2, 3, 4, 0, 2, 4 };
-        RwIm3DRenderIndexedPrimitive(rwPRIMTYPETRILIST, indices, std::size(indices));
+    if (RwIm3DTransform(TempBufferVertices.m_3d, uiTempBufferVerticesStored, nullptr, rwIM3D_VERTEXRGBA | rwIM3D_VERTEXXYZ)) {
+        RwIm3DRenderIndexedPrimitive(rwPRIMTYPETRILIST, aTempBufferIndices, uiTempBufferIndicesStored);
         RwIm3DEnd();
     }
 
