@@ -75,8 +75,15 @@ const CVector& FindPlayerCentreOfWorld(int32 playerId) {
     if (CCarCtrl::bCarsGeneratedAroundCamera)
         return TheCamera.GetPosition();
 
-    if (CVehicle* vehicle = FindPlayerVehicle(playerId, true))
+    // The remote vehicle is used even if the player isn't in a vehicle
+    if (const auto* const remote = FindPlayerInfo(playerId).m_pRemoteVehicle) {
+        return remote->GetPosition();
+    }
+
+    // NOTE: The original checks the vehicle of the player in focus here, not `playerId`'s
+    if (const auto* const vehicle = FindPlayerVehicle()) {
         return vehicle->GetPosition();
+    }
 
     return FindPlayerPed(playerId)->GetPosition();
 }
@@ -110,8 +117,14 @@ CVector FindPlayerCentreOfWorldForMap(int32 playerId) {
 // Returns player angle in radians
 // 0x56E450
 float FindPlayerHeading(int32 playerId) {
-    CVehicle* vehicle = FindPlayerVehicle(playerId, true);
-    return vehicle ? vehicle->GetHeading() : FindPlayerPed(playerId)->GetHeading();
+    // The remote vehicle is used even if the player isn't in a vehicle
+    if (const auto* const remote = FindPlayerInfo(playerId).m_pRemoteVehicle) {
+        return remote->GetHeading();
+    }
+    if (const auto* const vehicle = FindPlayerVehicle(playerId)) {
+        return vehicle->GetHeading();
+    }
+    return FindPlayerPed(playerId)->GetHeading();
 }
 
 // Returns Z coord for active player
