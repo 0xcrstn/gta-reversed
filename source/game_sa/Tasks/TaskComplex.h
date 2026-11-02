@@ -25,11 +25,13 @@ public:
         return m_pSubTask->MakeAbortable(ped, priority, event);
     }
 
+    // 0x61A430
     virtual void SetSubTask(CTask* subTask) final { // TODO: Make this non-virtual
         if (m_pSubTask == subTask) { // Same task set already, do nothing
             return;
         }
-        delete std::exchange(m_pSubTask, subTask); // Delete old, set new
+        delete m_pSubTask; // The old sub-task is deleted before the new one is stored
+        m_pSubTask = subTask;
         if (subTask) {
             subTask->m_Parent = this;
         }
