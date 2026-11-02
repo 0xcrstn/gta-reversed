@@ -484,6 +484,7 @@
 #include "TaskComplexFleePoint.h"
 #include "TaskSimpleWaitUntilAreaCodesMatch.h"
 #include "TaskSimplePlayerOnFire.h"
+#include "TaskSimpleOnEscalator.h"
 #include "TaskComplexOnFire.h"
 #include "TaskSimpleBikeJacked.h"
 #include "TaskSimpleRunTimedAnim.h"
@@ -1169,7 +1170,7 @@ void InjectHooksMain() {
         CTaskSimpleKillPedWithCar::InjectHooks();
         CTaskSimpleHurtPedWithCar::InjectHooks();
         CTaskSimpleLookAbout::InjectHooks();
-        // CTaskSimpleOnEscalator::InjectHooks();
+        CTaskSimpleOnEscalator::InjectHooks();
         CTaskSimplePickUpBike::InjectHooks();
         CTaskSimplePlayerOnFire::InjectHooks();
         // CTaskSimpleRunAnimLoopedMiddle::InjectHooks();
