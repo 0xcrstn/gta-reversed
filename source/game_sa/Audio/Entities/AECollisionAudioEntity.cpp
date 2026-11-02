@@ -298,6 +298,14 @@ void CAECollisionAudioEntity::PlayBulletHitCollisionSound(eSurfaceType surface, 
     if (surface >= TOTAL_NUM_COLLISION_SURFACE_TYPES) {
         return;
     }
+    // BUG: `ReportBulletHit` passes `AE_SURFACE_TYPE_BMX` for BMXs, but that (like the other `AE_SURFACE_TYPE_*`s)
+    //      is an audio-only type, `g_surfaceInfos` below is read out of bounds for it.
+    if (notsa::bugfixes::GenericOOB && surface >= TOTAL_NUM_SURFACE_TYPES) {
+        if (surface != AE_SURFACE_TYPE_BMX) {
+            return;
+        }
+        surface = SURFACE_CAR; // Same as for any other vehicle
+    }
     const auto PlayRandomSound = [&](int32 minID, int32 maxID, float volumeOffset = 0.f, float rollOff = 1.5f) { // 0x4DB9BF
         //! Find a new random sound ID that is not the same as the last one.
         const auto GetNewRandomSoundID = [&]{
