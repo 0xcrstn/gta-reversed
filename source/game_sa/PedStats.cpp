@@ -13,6 +13,7 @@ void CPedStats::InjectHooks() {
     RH_ScopedInstall(Initialise, 0x5BF9D0);
     RH_ScopedInstall(Shutdown, 0x608850);
     RH_ScopedInstall(LoadPedStats, 0x5BB890);
+    RH_ScopedInstall(GetPedStatInfo, 0x608860);
     RH_ScopedInstall(GetPedStatType, 0x6088D0);
     RH_ScopedInstall(FindIndexWithPedStat, 0x608940, { .Reversed = false });
 }
@@ -111,7 +112,7 @@ ePedStats CPedStats::GetPedStatType(const char* statName) {
 // 0x608860
 CPedStat* CPedStats::GetPedStatInfo(const char* statName) {
     for (uint16 statIndex = 0; statIndex < PED_STATS_COUNT; statIndex++) {
-        if (strcmp(ms_apPedStats[statIndex].m_acName, statName) != 0) {
+        if (strcmp(ms_apPedStats[statIndex].m_acName, statName) == 0) {
             return &ms_apPedStats[statIndex];
         }
     }
