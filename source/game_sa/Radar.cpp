@@ -1122,7 +1122,8 @@ int32 CRadar::ClipRadarPoly(CVector2D* out, const CVector2D* in) {
 
 // 0x5853D0
 void CRadar::DrawAreaOnRadar(const CRect& rect, const CRGBA& color, bool inMenu) {
-    if (!inMenu && m_radarRect.IsRectInside(rect)) {
+    // 0x5853E2: Skip areas that don't overlap the radar sections
+    if (!inMenu && !m_radarRect.OverlapsWith(rect)) {
         return;
     }
 
