@@ -27,7 +27,6 @@ CTaskComplexFollowLeaderAnyMeans::CTaskComplexFollowLeaderAnyMeans(CPedGroup* pe
     m_ped{ped},
     m_pos{pos}
 {
-    DebugBreak(); // Pirulax: Let me know if this is ever hit, cause this task is seemingly unused.
     CEntity::SafeRegisterRef(m_ped);
 }
 
