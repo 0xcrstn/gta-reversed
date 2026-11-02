@@ -2183,7 +2183,7 @@ void CWorld::Process() {
         }
     });
 
-    for (auto& group : CPedGroups::ms_groups) {
+    for (auto&& [_, group] : CPedGroups::GetActiveGroupsWithIDs()) {
         GetEventGlobalGroup()->AddEventsToGroup(&group);
     }
 
@@ -2336,7 +2336,7 @@ void CWorld::Process() {
                         if (entity->TreatAsPlayerForCollisions()) {
                             NOTSA_LOG_DEBUG("STUCK: Final Step: Player Entity {} Is Stuck", entity->GetModelIndex()); // R* log
                             const auto physical = entity->AsPhysical();
-                            physical->m_vecMoveSpeed *= (float)std::pow(WORLD_PLAYER_SHIFT_DAMPING, CTimer::GetTimeStepInMS());
+                            physical->m_vecMoveSpeed *= (float)std::pow(WORLD_PLAYER_SHIFT_DAMPING, CTimer::GetTimeStep());
                             physical->ApplyMoveSpeed();
                             physical->ApplyTurnSpeed();
                         }
