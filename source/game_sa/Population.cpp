@@ -653,16 +653,14 @@ eModelID CPopulation::FindSpecificDriverModelForCar_ToUse(eModelID carModelIndex
 // 0x611B20
 bool CPopulation::IsCorrectTimeOfDayForEffect(const C2dEffectPedAttractor& fx) {
     switch (fx.m_nAttractorType) {
-    case PED_ATTRACTOR_PIZZA:
-    case PED_ATTRACTOR_SHELTER:
-    case PED_ATTRACTOR_TRIGGER_SCRIPT:
-    case PED_ATTRACTOR_LOOK_AT:
-    case PED_ATTRACTOR_SCRIPTED:
+    case PED_ATTRACTOR_ATM:
+    case PED_ATTRACTOR_SEAT:
+    case PED_ATTRACTOR_STOP:
     case PED_ATTRACTOR_PARK:
-    case PED_ATTRACTOR_STEP:
+        return CClock::GetIsTimeInRange(9, 20); // 9 is correct, because the function uses `>=` not `>`
+    default:
         return true;
     }
-    return CClock::GetIsTimeInRange(9, 20); // 9 is correct, because the function uses `>=` not `>`
 }
 
 // 0x611B60
