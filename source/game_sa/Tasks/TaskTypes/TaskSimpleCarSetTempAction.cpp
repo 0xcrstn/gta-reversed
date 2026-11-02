@@ -32,7 +32,7 @@ CTaskSimpleCarSetTempAction::CTaskSimpleCarSetTempAction(const CTaskSimpleCarSet
 bool CTaskSimpleCarSetTempAction::MakeAbortable(CPed* ped, eAbortPriority priority, CEvent const* event) {
     if (CTaskSimpleCarDrive::MakeAbortable(ped, priority, event)) {
         if (m_pVehicle) {
-            m_pVehicle->m_autoPilot.ClearTempAct();
+            m_pVehicle->m_autoPilot.SetTempAction(TEMPACT_NONE, 0);
         }
         return true;
     }
@@ -41,8 +41,6 @@ bool CTaskSimpleCarSetTempAction::MakeAbortable(CPed* ped, eAbortPriority priori
 
 // 0x645370
 bool CTaskSimpleCarSetTempAction::ProcessPed(CPed* ped) {
-    const auto ap = &m_pVehicle->m_autoPilot;
-
     if (!m_pVehicle) {
         m_pVehicle = ped->m_pVehicle;
         CEntity::SafeRegisterRef(m_pVehicle);
@@ -50,18 +48,19 @@ bool CTaskSimpleCarSetTempAction::ProcessPed(CPed* ped) {
 
     if (CTaskSimpleCarDrive::ProcessPed(ped)) {
         if (m_pVehicle) {
-            ap->SetTempAction(TEMPACT_NONE, 0);
+            m_pVehicle->m_autoPilot.SetTempAction(TEMPACT_NONE, 0);
             return true;
         }
     }
 
     if (m_pVehicle) {
+        auto& ap = m_pVehicle->m_autoPilot;
         if (m_TempAct != TEMPACT_NONE) {
-            ap->SetTempAction(m_TempAct, m_DurMs);
+            ap.SetTempAction(m_TempAct, m_DurMs);
             m_TempAct = TEMPACT_NONE;
             return false;
         }
-        if (ap->m_nTempAction == TEMPACT_NONE) {
+        if (ap.m_nTempAction == TEMPACT_NONE) {
             return true;
         }
     }
