@@ -36,11 +36,18 @@ CTaskSimpleCarGetIn::CTaskSimpleCarGetIn(const CTaskSimpleCarGetIn& o) :
 // 0x646710
 CTaskSimpleCarGetIn::~CTaskSimpleCarGetIn() {
     CEntity::SafeCleanUpRef(m_veh);
+    if (m_anim) {
+        m_anim->SetDefaultFinishCallback();
+    }
 }
 
+// 0x6467F0
 void CTaskSimpleCarGetIn::FinishAnimCarGetInCB(CAnimBlendAssociation* anim, void* data) {
     const auto self = static_cast<CTaskSimpleCarGetIn*>(data);
     self->m_finished = true;
+    if (self->m_anim) {
+        self->m_anim->SetBlendDelta(-1000.f);
+    }
     self->m_anim = nullptr;
 }
 
