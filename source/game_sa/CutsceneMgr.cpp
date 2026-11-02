@@ -271,11 +271,14 @@ bool CCutsceneMgr::HasCutsceneFinished() {
 
 // 0x5AFAD0
 void CCutsceneMgr::HideRequestedObjects() {
-    if (ms_iNumHiddenEntities == 0) {
+    // The cutscene file's REMOVE section counts the requests in `ms_iNumHiddenEntities`. The counter is then reused
+    // for the entities actually hidden here, which `DeleteCutsceneData_overlay` makes visible again
+    const auto numRequests = std::exchange(ms_iNumHiddenEntities, 0u);
+    if (numRequests == 0) {
         return;
     }
 
-    for (const auto& cr : ms_crToHideItems | rngv::take(ms_iNumHiddenEntities)) {
+    for (const auto& cr : ms_crToHideItems | rngv::take(numRequests)) {
         int32 modelId;
         if (!CModelInfo::GetModelInfo(cr.m_szObjectName, &modelId)) {
             NOTSA_LOG_DEBUG("Invalid model name(\"{}\")", cr.m_szObjectName);
@@ -315,7 +318,7 @@ bool CCutsceneMgr::IsCutsceneSkipButtonBeingPressed() {
     return pad->IsCrossPressed()
         || pad->IsMouseLButtonPressed()
         || pad->IsEnterJustPressed()
-        || pad->IsStandardKeyJustDown(' ')
+        || pad->IsStandardKeyJustPressed(' ')
         || !isForeground; // ????
 }
 
@@ -410,7 +413,7 @@ void CCutsceneMgr::LoadCutsceneData_loading() {
 
     // Finally, process attachments
     for (const auto& v : ms_iAttachObjectToBone | rngv::take(ms_numAttachObjectToBones)) {
-        AttachObjectToBone(ms_pCutsceneObjects[v.m_nCutscenePedObjectId], ms_pCutsceneObjects[v.m_nCutscenePedObjectId], v.m_nBoneId);
+        AttachObjectToBone(ms_pCutsceneObjects[v.m_nCutsceneAttachmentObjectId], ms_pCutsceneObjects[v.m_nCutscenePedObjectId], v.m_nBoneId);
     }
 }
 
@@ -524,7 +527,7 @@ bool CCutsceneMgr::LoadCutSceneFile(const char* csFileName) {
     csFileSzBytes  *= STREAMING_SECTOR_SIZE;
 
     // Allocate data for the file
-    auto csFileData{ std::make_unique<char[]>(csFileSzBytes * STREAMING_SECTOR_SIZE) };
+    auto csFileData{ std::make_unique<char[]>(csFileSzBytes) };
 
     // Load cutscene data
     {
@@ -1036,7 +1039,7 @@ void CCutsceneMgr::Update_overlay() {
             }
             if (csfx.m_bPlaying) {
                 if (csfx.m_nEndTime != -1) { // Time to end?
-                    if (csTimeMS >= csfx.m_nEndTime + csfx.m_nStartTime) {
+                    if (csTimeMS > csfx.m_nEndTime + csfx.m_nStartTime) {
                         fxsys->Stop();
                         csfx.m_bPlaying = false;
                         csfx.m_bStopped = true;
@@ -1049,7 +1052,7 @@ void CCutsceneMgr::Update_overlay() {
         }
 
         // Deal with text upcoming texts
-        if (ms_currTextOutput < ms_numTextOutput && csTimeMS >= ms_iTextStartTime[ms_currTextOutput]) {
+        if (ms_currTextOutput < ms_numTextOutput && csTimeMS > ms_iTextStartTime[ms_currTextOutput]) {
             CMessages::AddMessageJump(
                 TheText.Get(ms_cTextOutput[ms_currTextOutput]),
                 ms_iTextDuration[ms_currTextOutput],
