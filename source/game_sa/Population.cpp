@@ -1728,7 +1728,7 @@ void CPopulation::ManageDummy(CDummy* dummy, const CVector& posn) {
 // 0x6160A0
 void CPopulation::ManageAllPopulation() {
     const auto objPlyrIsHolding = [] {
-        const auto holdEntityTask = notsa::dyn_cast_if_present<CTaskSimpleHoldEntity>(FindPlayerPed()->GetIntelligence()->GetTaskHold(false));
+        const auto holdEntityTask = notsa::dyn_cast_if_present<CTaskSimpleHoldEntity>(FindPlayerPed(0)->GetIntelligence()->GetTaskHold(false));
         return holdEntityTask
             ? holdEntityTask->GetHeldEntity()
             : nullptr;
@@ -1736,14 +1736,19 @@ void CPopulation::ManageAllPopulation() {
 
     const auto& center = FindPlayerCentreOfWorld();
 
-    for (auto& obj : GetObjectPool()->GetAllValid()) {
-        if (&obj != objPlyrIsHolding) {
-            ManageObject(&obj, center);
+    // NOTE: The original goes through both pools backwards (last slot first)
+    auto* const objectPool = GetObjectPool();
+    for (auto i = objectPool->GetSize(); i-- > 0;) {
+        if (auto* const obj = objectPool->GetAt(i); obj && obj != objPlyrIsHolding) {
+            ManageObject(obj, center);
         }
     }
 
-    for (auto& dummy : GetDummyPool()->GetAllValid()) {
-        ManageDummy(&dummy, center);
+    auto* const dummyPool = GetDummyPool();
+    for (auto i = dummyPool->GetSize(); i-- > 0;) {
+        if (auto* const dummy = dummyPool->GetAt(i)) {
+            ManageDummy(dummy, center);
+        }
     }
 }
 
@@ -1783,8 +1788,10 @@ void CPopulation::ManagePopulation() {
     {
         ZoneScopedN("Manage Peds");
         auto* pool = GetPedPool();
-        for (auto& ped : GetPedPool()->GetAllValid()) {
-            ManagePed(&ped, centre);
+        for (auto i = pool->GetSize(); i-- > 0;) { // NOTE: The original goes through the pool backwards (last slot first)
+            if (auto* const ped = pool->GetAt(i)) {
+                ManagePed(ped, centre);
+            }
         }
     }
 }
