@@ -1216,6 +1216,10 @@ void CFileLoader::LoadEntryExit(const char* line) {
         numOfPeds,
         name
     );
+    if (enexPoolIdx == -1) { // NOTSA: `AddOne` only returns -1 (pool full) with `FIX_BUGS`, the original returns slot 0
+        NOTSA_LOG_ERR("The entry-exit pool is full, entry-exit at ({}, {}, {}) not added", enter.x, enter.y, enter.z);
+        return;
+    }
     auto enex = CEntryExitManager::GetInSlot(enexPoolIdx);
     assert(enex);
 
