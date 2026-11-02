@@ -248,10 +248,9 @@ void CWorld::ProcessPedsAfterPreRender() {
     }
 
     for (auto* const entity : ms_listMovingEntityPtrs) {
-        if (!entity->m_bRemoveFromWorld) {
-            if (entity->GetIsTypePed()) {
-                entity->AsPed()->GetIntelligence()->ProcessAfterPreRender();
-            }
+        // Unlike in `Process`, peds about to be removed are processed too
+        if (entity->GetIsTypePed()) {
+            entity->AsPed()->GetIntelligence()->ProcessAfterPreRender();
         }
     }
 }
