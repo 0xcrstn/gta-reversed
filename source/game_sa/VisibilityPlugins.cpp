@@ -514,12 +514,14 @@ void CVisibilityPlugins::RenderAtomicWithAlpha(RpAtomic* atomic, int32 alpha) {
         RpMaterial* material = RpGeometryGetMaterial(geometry, i);
         RwRGBA* color = RpMaterialGetColor(material);
         alphas[i] = color->alpha;
-        color->alpha = std::min(color->alpha, (uint8)alpha);
+        // 0x7324C3: Compared with the whole `alpha`, not just its low byte
+        color->alpha = (uint8)std::min<int32>(color->alpha, alpha);
     }
 
     AtomicDefaultRenderCallBack(atomic);
 
-    for (int32 i = 0; i < numMaterials; i++) {
+    // 0x7324E0: Restored in reverse order, so a material used more than once gets its original alpha back
+    for (int32 i = numMaterials; i-- > 0;) {
         RpMaterial* material = RpGeometryGetMaterial(geometry, i);
         RpMaterialGetColor(material)->alpha = alphas[i];
     }
@@ -534,7 +536,7 @@ void CVisibilityPlugins::RenderAlphaAtomics() {
 // 0x732660
 RpAtomic* CVisibilityPlugins::RenderAtomicWithAlphaCB(RpAtomic* atomic, void* data) {
     if (RpAtomicGetFlags(atomic) & rpATOMICRENDER) {
-        RenderAtomicWithAlpha(atomic, (int32)(uintptr)data); // TODO: maybe
+        RenderAtomicWithAlpha(atomic, *static_cast<int32*>(data)); // `data` is the alpha's address (See `RenderFadingClump`)
     }
     return atomic;
 }
