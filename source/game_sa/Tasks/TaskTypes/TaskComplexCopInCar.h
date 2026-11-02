@@ -28,13 +28,9 @@ public:
 
     CTask* CreateSubTask(eTaskType taskType, CPed* copPed);
 
+    CTask* Clone() const override { return new CTaskComplexCopInCar(m_Vehicle, m_Cop, m_Suspect, m_IsDriver); } // 0x68CEC0
 
-
-CTask* Clone() const override { return new CTaskComplexCopInCar{ *this }; }
-
-
-
-eTaskType GetTaskType() const override { return Type; }
+    eTaskType GetTaskType() const override { return Type; }
 
     bool MakeAbortable(CPed* ped, eAbortPriority priority = ABORT_PRIORITY_URGENT, const CEvent* event = nullptr) override;
     CTask* CreateNextSubTask(CPed* ped) override;
