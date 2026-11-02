@@ -399,13 +399,11 @@ float CCamera::Find3rdPersonQuickAimPitch() const {
 
 // 0x50AD90
 uint32 CCamera::GetCutSceneFinishTime() {
-    auto& cam = m_aCams[m_nActiveCam];
-    if (cam.m_nMode == eCamMode::MODE_FLYBY) {
+    if (const auto& cam = m_aCams[m_nActiveCam]; cam.m_nMode == eCamMode::MODE_FLYBY) {
         return cam.m_nFinishTime;
     }
 
-    cam = m_aCams[(m_nActiveCam + 1) % 2];
-    if (cam.m_nMode == eCamMode::MODE_FLYBY) {
+    if (const auto& cam = m_aCams[(m_nActiveCam + 1) % 2]; cam.m_nMode == eCamMode::MODE_FLYBY) {
         return cam.m_nFinishTime;
     }
 
@@ -834,14 +832,12 @@ void CCamera::SetParametersForScriptInterpolation(float interpolationToStopMovin
 
 // 0x50C070
 void CCamera::SetPercentAlongCutScene(float percent) {
-    auto& cam = m_aCams[m_nActiveCam];
-    if (cam.m_nMode == eCamMode::MODE_FLYBY) {
+    if (auto& cam = m_aCams[m_nActiveCam]; cam.m_nMode == eCamMode::MODE_FLYBY) {
         cam.m_fTimeElapsedFloat = (float)cam.m_nFinishTime * percent / 100.0f;
         return;
     }
 
-    cam = m_aCams[(m_nActiveCam + 1) % 2];
-    if (cam.m_nMode == eCamMode::MODE_FLYBY) {
+    if (auto& cam = m_aCams[(m_nActiveCam + 1) % 2]; cam.m_nMode == eCamMode::MODE_FLYBY) {
         cam.m_fTimeElapsedFloat = (float)cam.m_nFinishTime * percent / 100.0f;
         return;
     }
