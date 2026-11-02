@@ -1146,16 +1146,22 @@ void CControllerConfigManager::AffectPadFromKeyBoard() {
             const auto key = action.Keys[+type].m_uiActionInitiator;
 
             if (GetIsKeyboardKeyDown(key) && inMenu && !GetIsKeyBlank(key, type)) {
-                if (inMenu) {
-                    AffectControllerStateOn_ButtonDown(key, type);
-                }
-                auto* pad = CPad::GetPad();
-                if (!pad || FrontEndMenuManager.m_bMenuActive) {
-                    continue;
-                }
-                AffectControllerStateOn_ButtonUp_All_Player_States(key, type, GetControllerState(*pad, type));
+                AffectControllerStateOn_ButtonDown(key, type);
             }
         }
+
+        // 0x5313BB - Handle key release logic: Release the primary key, or the extra key if the primary one is held
+        const auto isPrimaryKeyDown = GetIsKeyboardKeyDown(action.Keys[+eControllerType::KEYBOARD].m_uiActionInitiator);
+        const auto releasedType     = isPrimaryKeyDown ? eControllerType::OPTIONAL_EXTRA_KEY : eControllerType::KEYBOARD;
+        const auto releasedKey      = action.Keys[+releasedType].m_uiActionInitiator;
+        if (isPrimaryKeyDown && GetIsKeyboardKeyDown(releasedKey)) {
+            continue; // Both keys are held
+        }
+        auto* const pad = CPad::GetPad();
+        if (GetIsKeyBlank(releasedKey, releasedType) || !pad || FrontEndMenuManager.m_bMenuActive) {
+            continue;
+        }
+        AffectControllerStateOn_ButtonUp_All_Player_States(releasedKey, releasedType, GetControllerState(*pad, releasedType));
     }
 }
 
