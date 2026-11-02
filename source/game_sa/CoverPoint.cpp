@@ -1,7 +1,7 @@
 #include "StdInc.h"
 #include "CoverPoint.h"
 
-// notsa
+// notsa, code from 0x699092 - 0x699111 (`CCover::AddCoverPoint`)
 CCoverPoint::CCoverPoint(eType type, eUsage usage, Dir dir, CEntity* coverEntity, const CVector* pos) :
     m_Type{ type },
     m_Usage{ usage },
@@ -12,10 +12,13 @@ CCoverPoint::CCoverPoint(eType type, eUsage usage, Dir dir, CEntity* coverEntity
     if (pos) {
         m_PointOnMap = *pos;
     }
-    if (coverEntity) {
-        if (!coverEntity->GetIsTypeBuilding() || coverEntity->GetIplIndex() != 0) {
-            m_CoverEntity = coverEntity;
-        }
+
+    // 0x6990D6 - The entity is always stored, but it's only referenced if it can be deleted (it's not a permanent building).
+    // Without it, `CCover::RemoveCoverPointIfEntityLost` would remove the building's cover points right away.
+    auto** const coverEntityPtr = reinterpret_cast<CEntity**>(std::addressof(m_CoverEntity)); // Not `&`, `EntityRef` overloads it
+    *coverEntityPtr             = coverEntity;
+    if (coverEntity && (!coverEntity->GetIsTypeBuilding() || coverEntity->GetIplIndex() != 0)) {
+        coverEntity->RegisterReference(coverEntityPtr);
     }
 }
 
