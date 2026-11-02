@@ -708,6 +708,7 @@ void InjectHooksMain() {
     CVisibilityPlugins::InjectHooks();
     CPed::InjectHooks();
     CPedIntelligence::InjectHooks();
+    CMentalState::InjectHooks();
     CPedGroupIntelligence::InjectHooks();
     CCollision::InjectHooks();
     CTempColModels::InjectHooks();
