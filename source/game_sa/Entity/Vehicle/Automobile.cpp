@@ -3312,11 +3312,10 @@ bool CAutomobile::SetTowLink(CVehicle* tractor, bool placeMeOnRoadProperly) {
     case eEntityStatus::STATUS_ABANDONED:
         break;
     case eEntityStatus::STATUS_SIMPLE:
-        return false;
-    default: {
         CCarCtrl::SwitchVehicleToRealPhysics(this);
         break;
-    }
+    default:
+        return false;
     }
 
     SetStatus(STATUS_IS_TOWED);
