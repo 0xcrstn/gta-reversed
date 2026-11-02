@@ -12,6 +12,12 @@ constexpr auto EVENT_VOLUMES_BUFFER_SIZE = 45401;
 
 auto& m_pAudioEventVolumes = StaticRef<int8*>(0xBD00F8); // Use `GetDefaultVolume` to access!
 
+// Inlined into the derived classes' destructors (e.g.: 0x6D0A65)
+// Not `= default` on purpose: MSVC then doesn't restore the base vtable. The original does, before `m_tempSound` is destroyed,
+// so sounds still pointing to a destroyed audio entity call the empty `UpdateParameters` instead of the derived class' one.
+CAEAudioEntity::~CAEAudioEntity() {
+}
+
 // NOTSA | INLINED | REFACTORED
 bool CAEAudioEntity::StaticInitialise() {
     m_pAudioEventVolumes = new int8[EVENT_VOLUMES_BUFFER_SIZE];
