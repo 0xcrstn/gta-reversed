@@ -198,6 +198,13 @@ void CBmx::ProcessBunnyHop() {
         }
     }
 
+    // 0x6C067A - Not charging (anymore), let the hop anim play and fade out
+    if (anim && m_fControlJump <= 0.0f) {
+        anim->SetFlag(ANIMATION_IS_PLAYING, true);
+        anim->SetFlag(ANIMATION_IS_BLEND_AUTO_REMOVE, true);
+        anim->SetBlendDelta(-8.0f);
+    }
+
     if (anim) {
         if (anim->GetBlendAmount() > 0.5f) {
             m_GasPedal                                   = 0.0f;
