@@ -57,25 +57,25 @@ int16 CTaskSimpleFightingControl::CalcMoveCommand(CPed* ped) {
     const auto segmentPedToTarget = targetPos - pedPos;
 
     // Check if target is outside of the attacking angle
-    if (std::abs(CGeneral::LimitRadianAngle(segmentPedToTarget.Heading()) - ped->m_fCurrentRotation) >= FIGHT_CTRL_MAX_ATTACK_ANGLE_RAD) {
+    if (std::abs(CGeneral::LimitRadianAngle(segmentPedToTarget.Heading() - ped->m_fCurrentRotation)) > FIGHT_CTRL_MAX_ATTACK_ANGLE_RAD) {
         m_nextAttackTime += (uint32)CTimer::GetTimeStepInMS();
         return 0;
     }
 
     switch (m_target->GetType()) {
     case ENTITY_TYPE_PED: {
-        const auto range = segmentPedToTarget.Magnitude() - m_maxAttackRange;
+        const auto dist  = segmentPedToTarget.Magnitude();
+        const auto range = dist - m_maxAttackRange;
+        const auto rnd   = rand(); // 0x624C2B: Called even if the target is out of range
         if (range > 0.1f) {
             return 3;
         }
-
-        const auto rnd = rand();
 
         if (range > -0.1f) { // Inverted
             return (rnd % 16 == 0) ? 7 : -1;
         }
 
-        if (range >= 0.8f) {
+        if (dist >= 0.8f) { // 0x624C7E: The distance, not the range
             if (rand() % 64 == 0) {
                 return 8;
             }
@@ -85,7 +85,7 @@ int16 CTaskSimpleFightingControl::CalcMoveCommand(CPed* ped) {
         } else if (rnd % 16 == 0) {
             return 9;
         }
-     
+
         break;
     }
     case ENTITY_TYPE_VEHICLE: {
@@ -94,7 +94,7 @@ int16 CTaskSimpleFightingControl::CalcMoveCommand(CPed* ped) {
         CPedGeometryAnalyser::ComputeEntityBoundingBoxPlanes(targetPos.z, *m_target, planeNormals, planeDs);
 
         const auto hitSide = CPedGeometryAnalyser::ComputeEntityHitSide(pedPos, *m_target);
-        if ((DotProduct(planeNormals[+hitSide], pedPos) + planeDs[+hitSide]) >= 0.7f) {
+        if ((DotProduct(planeNormals[+hitSide], pedPos) + planeDs[+hitSide]) > 0.7f) {
             return 3;
         }
 
