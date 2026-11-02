@@ -305,6 +305,9 @@ bool CEntryExit::TransitionStarted(CPed* ped) {
                 return true;
             }
             AddPedScriptCommand(new CTaskComplexGotoDoorAndOpen(GetPosition(), GetPosition() + spawnPointExitToUsDir * 4.f));
+
+            // 0x440309: Both branches set up the fixed camera
+            SetupFixedCamera(spawnPointExitToUsDir);
         }
     }
 
