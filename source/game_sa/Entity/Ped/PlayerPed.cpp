@@ -91,15 +91,18 @@ void CPlayerPed::InjectHooks() {
 }
 
 // TODO: To class and create 2 function
+// The wanted level and the chosen weapon are single bytes, the padding after them is left uninitialised by the original
 struct CPlayerPedDataSaveStructure {
     uint32          ChaosLevel{};
-    eWantedLevel    WantedLevel{};
+    uint8           WantedLevel{};
     CPedClothesDesc ClothesDesc{};
-    uint32          ChosenWeapon{};
+    uint8           ChosenWeapon{};
     // float          Multiplier{}; // Mobile
 };
 
 VALIDATE_SIZE(CPlayerPedDataSaveStructure, 0x84 /* + 0x4 */);
+VALIDATE_OFFSET(CPlayerPedDataSaveStructure, ClothesDesc, 0x8);
+VALIDATE_OFFSET(CPlayerPedDataSaveStructure, ChosenWeapon, 0x80);
 
 // 0x5D46E0
 bool CPlayerPed::Load() {
@@ -110,7 +113,7 @@ bool CPlayerPed::Load() {
 
     CWanted* wanted = GetPlayerWanted();
     wanted->m_ChaosLevel = sd.ChaosLevel;
-    wanted->m_WantedLevel= sd.WantedLevel;
+    wanted->m_WantedLevel               = (eWantedLevel)sd.WantedLevel;
 
     *GetPlayerData()->m_pPedClothesDesc = sd.ClothesDesc;
     GetPlayerData()->m_nChosenWeapon   = sd.ChosenWeapon;
@@ -124,7 +127,7 @@ bool CPlayerPed::Save() {
 
     CWanted* wanted = GetPlayerWanted();
     saveData.ChaosLevel = wanted->m_ChaosLevel;
-    saveData.WantedLevel = wanted->m_WantedLevel;
+    saveData.WantedLevel  = (uint8)wanted->m_WantedLevel;
     saveData.ChosenWeapon = GetPlayerData()->m_nChosenWeapon;
     saveData.ClothesDesc  = *GetPlayerData()->m_pPedClothesDesc;
 
