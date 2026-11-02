@@ -881,22 +881,21 @@ void CCamera::SetZoomValueFollowPedScript(int16 zoomMode) {
 void CCamera::SetZoomValueCamStringScript(int16 zoomMode) {
     auto entity = m_aCams[0].m_pCamTargetEntity;
 
-    if (entity->GetStatus() == STATUS_SIMPLE) {
+    if (entity->GetIsTypeVehicle()) {
+        // The original ignores the lookup's result, an unknown appearance uses index 0
         int32 arrPos{};
-        VERIFY(GetArrPosForVehicleType(static_cast<eVehicleType>(entity->AsVehicle()->GetVehicleAppearance()), arrPos));
-        m_fCarZoomValueScript = [zoomMode]{
-            switch (zoomMode) {
-            case 0:
-                return std::array{ -1.0f, -0.2f, -3.20f, 0.05f, -2.41f }; // 0x8CC3E0
-            case 1:
-                return std::array{ +1.0f, +1.4f, +0.65f, 1.90f, +6.49f }; // 0x8CC3F4
-            case 2:
-                return std::array{ +6.0f, +6.0f, +15.9f, 15.9f, +15.0f }; // 0x8CC408
-            default:
-                NOTSA_UNREACHABLE("Unexpected zoom mode: {}", zoomMode);
-            }
-        }()[arrPos];
-    
+        GetArrPosForVehicleType(static_cast<eVehicleType>(entity->AsVehicle()->GetVehicleAppearance()), arrPos);
+
+        constexpr std::array ZOOM_ONE   = { -1.0f, -0.2f, -3.20f, 0.05f, -2.41f }; // 0x8CC3E0
+        constexpr std::array ZOOM_TWO   = { +1.0f, +1.4f, +0.65f, 1.90f, +6.49f }; // 0x8CC3F4
+        constexpr std::array ZOOM_THREE = { +6.0f, +6.0f, +15.9f, 15.9f, +15.0f }; // 0x8CC408
+        switch (zoomMode) {
+        case 0:  m_fCarZoomValueScript = ZOOM_ONE[arrPos]; break;
+        case 1:  m_fCarZoomValueScript = ZOOM_TWO[arrPos]; break;
+        case 2:  m_fCarZoomValueScript = ZOOM_THREE[arrPos]; break;
+        default: break; // The original leaves the value unchanged, but still enables it
+        }
+
         m_bUseScriptZoomValueCar = true;
     } else {
         SetZoomValueFollowPedScript(zoomMode);
