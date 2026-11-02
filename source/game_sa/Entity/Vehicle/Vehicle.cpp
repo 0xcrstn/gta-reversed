@@ -385,10 +385,10 @@ CVehicle::~CVehicle() {
         m_vehicleSpecialColIndex = -1;
     }
 
-    for (auto particle : { m_pOverheatParticle, m_pFireParticle, m_pDustParticle }) {
-        if (particle) {
-            g_fxMan.DestroyFxSystem(particle);
-            particle = nullptr;
+    for (auto* const particle : { &m_pOverheatParticle, &m_pFireParticle, &m_pDustParticle }) {
+        if (*particle) {
+            g_fxMan.DestroyFxSystem(*particle);
+            *particle = nullptr;
         }
     }
 
@@ -397,7 +397,7 @@ CVehicle::~CVehicle() {
         m_pCustomCarPlate = nullptr;
     }
 
-    const auto iRopeInd = CRopes::FindRope(reinterpret_cast<uint32>(this) + 1);
+    const auto iRopeInd = CRopes::FindRope(GetRopeID());
     if (iRopeInd >= 0) {
         CRopes::GetRope(iRopeInd).Remove();
     }
@@ -480,10 +480,9 @@ void CVehicle::SpecialEntityPreCollisionStuff(CPhysical* colPhysical, bool bIgno
         return;
     }
 
-    if (physicalFlags.bSubmergedInWater
+    if (physicalFlags.bDontCollideWithFlyers
         && GetStatus() != STATUS_PLAYER
-        && (GetStatus() != STATUS_REMOTE_CONTROLLED && colPhysical->DoesNotCollideWithFlyers())) // BUG:? Seems like it should check for it being heli
-    {
+        && (GetStatus() != STATUS_REMOTE_CONTROLLED && colPhysical->DoesNotCollideWithFlyers())) {
         bCollisionDisabled = true;
         return;
     }
@@ -534,6 +533,7 @@ void CVehicle::SpecialEntityPreCollisionStuff(CPhysical* colPhysical, bool bIgno
         {
             bCollisionDisabled = true;
             colPhysical->AsObject()->m_pEntityIgnoredCollision = this;
+            return;
         }
         else
         {
@@ -1990,7 +1990,7 @@ void CVehicle::UpdateClumpAlpha() {
         } else if (curr < 255) {
             return std::min(255, curr + 16);
         }
-        return 255;
+        return curr;
     };
     CVisibilityPlugins::SetClumpAlpha(GetRpClump(), GetAlphaToSet());
 }
