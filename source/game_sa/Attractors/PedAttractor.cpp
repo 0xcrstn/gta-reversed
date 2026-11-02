@@ -146,7 +146,10 @@ bool CPedAttractor::IsRegisteredWithPed(const CPed* ped) const {
 
 // 0x5EB530
 bool CPedAttractor::IsAtHeadOfQueue(CPed* ped) {
-    return !m_ArrivedPeds.empty() && m_ArrivedPeds.front() == ped; // NOTE/BUGFIX: Check if the array is empty
+    if (notsa::bugfixes::GenericCrashing && m_ArrivedPeds.empty()) {
+        return false;
+    }
+    return *m_ArrivedPeds.begin() == ped; // The original reads the first element even if the queue is empty
 }
 
 // 0x5EC500
