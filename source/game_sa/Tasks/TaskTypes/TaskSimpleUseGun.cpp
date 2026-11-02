@@ -97,13 +97,16 @@ void CTaskSimpleUseGun::FireGun(CPed* ped, bool isLeftHand) {
         CVector    origin     = ped->GetBonePosition(handBoneId);
         origin.z += barrelPos.z + 0.15f;
         ped->GetTransformedBonePosition(barrelPos, handBoneId);
-        if (!ped->m_pedIK.bUseArm) {
+        if (ped->m_pedIK.bUseArm) { // 0x61EBFF, 0x61EC3B
             ped->m_pedIK.bGunReachedTarget = g_ikChainMan.IsFacingTarget(ped, isLeftHand ? eIKChainSlot::LEFT_ARM : eIKChainSlot::RIGHT_ARM);
         }
         DoFireGun(origin, barrelPos);
     } else { // Otherwise ped is probably not on screen anyways, so just do something good enough
         CVector origin = ped->GetPosition();
         origin.z += 0.7f;
+        if (ped->m_pedIK.bUseArm) { // 0x61EBAB
+            ped->m_pedIK.bGunReachedTarget = true;
+        }
         DoFireGun(origin, origin);
     }
 
