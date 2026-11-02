@@ -86,7 +86,7 @@ public:
     void RemoveMember(CPed* ped);
 
     //! I'll let you guess
-    void RemoveNFollowers(size_t count);
+    void RemoveNFollowers(int32 count);
 
     //! Get a random ped from the group. Might return null.
     CPed* GetRandom();
