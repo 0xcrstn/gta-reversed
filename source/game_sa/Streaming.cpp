@@ -213,12 +213,12 @@ void CStreaming::AddModelsToRequestList(const CVector& point, int32 streamingFla
 
             if (pointSectorDistSq <= radiusInnerSq) {
                 ProcessEntitiesInSectorList(sector.Buildings, streamingFlags);
-                ProcessEntitiesInSectorList(repeatSector.Peds, streamingFlags);
+                ProcessEntitiesInSectorList(repeatSector.Objects, streamingFlags); // 0x40D6BB
                 ProcessEntitiesInSectorList(sector.Dummies, streamingFlags);
             } else {
                 if (pointSectorDistSq <= radiusOuterSq) {
                     ProcessEntitiesInSectorList(sector.Buildings, point.x, point.y, min.x, min.y, max.x, max.y, fRadius, streamingFlags);
-                    ProcessEntitiesInSectorList(repeatSector.Peds, point.x, point.y, min.x, min.y, max.x, max.y, fRadius, streamingFlags);
+                    ProcessEntitiesInSectorList(repeatSector.Objects, point.x, point.y, min.x, min.y, max.x, max.y, fRadius, streamingFlags); // 0x40D736
                     ProcessEntitiesInSectorList(sector.Dummies, point.x, point.y, min.x, min.y, max.x, max.y, fRadius, streamingFlags);
                 }
             }
@@ -1347,10 +1347,10 @@ void CStreaming::RequestBigBuildings(const CVector& point) {
 void CStreaming::RequestFile(int32 modelId, CdStreamPos pos, uint32 size, StreamingImgID img, int32 streamingFlags) {
     auto& si = GetInfo(modelId);
 
-    if (   si.GetCdSize()
-        && si.GetCdPosn() == CdStreamPos{ .Offset = pos.Offset, .FileID = CdStreamHandleToFileID(ms_files[img].StreamHandle) }
-        && si.GetCdSize() == size
-    ) {
+    if (si.GetCdSize()
+        // 0x40A094..0x40A0C9: The requested position is packed with the image index, not with the file ID of the image's stream handle
+        && si.GetCdPosn().ToInt() == ((static_cast<uint32>(img) << CD_STREAM_HANDLE_BITS) | pos.ToInt())
+        && si.GetCdSize() == size) {
         RequestModel(modelId, streamingFlags);
     } else {
         RemoveModel(modelId);
@@ -2194,8 +2194,9 @@ void CStreaming::RemoveCurrentZonesModels() {
     for (int32 gangId = 0; gangId < TOTAL_GANGS; gangId++) {
         const auto gangPedGroupId = CPopulation::GetPedGroupId(static_cast<ePopcycleGroup>(gangId + POPCYCLE_GROUP_BALLAS));
 
-        // \/ NOTE: Originally they only processed the first 5 models... I'm not sure why, but this should work too.
-        for (const auto modelId : CPopulation::GetModelsInPedGroup(gangPedGroupId)) {
+        // 0x40B2F1..0x40B2F5: Only the first 5 slots of the group are processed, unused ones included
+        for (const auto slotModelId : CPopulation::m_PedGroups[gangPedGroupId] | rngv::take(5)) {
+            const auto modelId = static_cast<uint16>(slotModelId); // 0x40B196: Read zero-extended
             if (modelId != CPopulation::m_DefaultModelIDForUnusedSlot) {
                 SetModelAndItsTxdDeletable(modelId);
             }
@@ -3268,7 +3269,8 @@ void CStreaming::StreamPedsForInterior(int32 interiorType) {
         const int32 rndHusband = CGeneral::GetRandomNumber() % CPopulation::GetNumPedsInGroup(POPCYCLE_GROUP_HUSBANDS, 0); // Choose a random husband
 
         const int32 numWives = CPopulation::GetNumPedsInGroup(POPCYCLE_GROUP_WIVES, 0);
-        int32 randomWife = std::max(0, rndHusband - CGeneral::GetRandomNumberInRange(3, 9));
+        // 0x40BCFD..0x40BD0D: Somewhere around the husband's index
+        int32 randomWife = std::max(0, rndHusband - CGeneral::GetRandomNumberInRange(0, 6) + 3);
         if (numWives - 1 < randomWife)
             randomWife = numWives - 1;
 
@@ -3313,8 +3315,8 @@ void CStreaming::StreamPedsForInterior(int32 interiorType) {
         }
         break;
     }
-    default:
-        NOTSA_UNREACHABLE("Unhandled Interior Type");
+    default: // 0x40BBC9: Other interior types leave the slots as they are
+        break;
     }
 }
 
