@@ -1387,8 +1387,9 @@ bool CPhysical::CanPhysicalBeDamaged(eWeaponType weapon, bool* bDamagedDueToFire
     case WEAPON_ARMOUR | WEAPON_BASEBALLBAT:
         return true;
     case WEAPON_MOLOTOV:
-        if (!physicalFlags.bFireProof)
+        if (!physicalFlags.bExplosionProof && !physicalFlags.bFireProof) {
             break;
+        }
         return false;
     case WEAPON_PISTOL:
     case WEAPON_PISTOL_SILENCED:
@@ -1418,6 +1419,8 @@ bool CPhysical::CanPhysicalBeDamaged(eWeaponType weapon, bool* bDamagedDueToFire
         if (physicalFlags.bCollisionProof)
             return false;
         return true;
+    default: // Types outside [WEAPON_UNARMED, WEAPON_FALL] damage it too, but `bDamagedDueToFireOrExplosionOrBullet` stays `false`
+        return true;
     }
 
     if (!bDamagedDueToFireOrExplosionOrBullet)
@@ -1437,8 +1440,9 @@ void CPhysical::ApplyAirResistance()
             if (GetIsTypeVehicle())
             {
                 CVehicle* vehicle = this->AsVehicle();
-                if (vehicle->IsAutomobile() || vehicle->IsSubBike())
+                if (vehicle->IsSubAutomobile() || vehicle->IsSubBike()) { // Both check the sub type
                     fSpeedMagnitude = CVehicle::m_fAirResistanceMult * fSpeedMagnitude;
+                }
             }
         }
 
@@ -2959,7 +2963,7 @@ bool CPhysical::ApplyCollision(CEntity* theEntity, CColPoint& colPoint, float& t
         CVector vecDistanceToPoint = colPoint.m_vecPoint - entity->GetPosition();
         CVector vecEntitySpeed = entity->GetSpeed(vecDistanceToPoint);
 
-        if (!entity->physicalFlags.bAddMovingCollisionSpeed || !GetIsTypeVehicle() || colPoint.m_nSurfaceTypeB != SURFACE_CAR_MOVINGCOMPONENT) {
+        if (!entity->physicalFlags.bAddMovingCollisionSpeed || !entity->GetIsTypeVehicle() || colPoint.m_nSurfaceTypeB != SURFACE_CAR_MOVINGCOMPONENT) {
             // nothing
         } else {
             vecEntitySpeed += entityVehicle->AddMovingCollisionSpeed(vecDistanceToPoint);
@@ -3052,8 +3056,9 @@ bool CPhysical::ApplyCollision(CEntity* theEntity, CColPoint& colPoint, float& t
         CVector vecDistanceToPointFromThis = colPoint.m_vecPoint - GetPosition();
         CVector vecThisSpeed = GetSpeed(vecDistanceToPointFromThis);
 
-        if (!physicalFlags.bAddMovingCollisionSpeed && GetIsTypeVehicle() && colPoint.m_nSurfaceTypeA == SURFACE_CAR_MOVINGCOMPONENT)
+        if (physicalFlags.bAddMovingCollisionSpeed && GetIsTypeVehicle() && colPoint.m_nSurfaceTypeA == SURFACE_CAR_MOVINGCOMPONENT) {
             vecThisSpeed += thisVehicle->AddMovingCollisionSpeed(vecDistanceToPointFromThis);
+        }
 
         float fThisSpeedDotProduct = DotProduct(vecThisSpeed, colPoint.m_vecNormal);
         float fEntitySpeedDotProduct = DotProduct(entity->m_vecMoveSpeed, colPoint.m_vecNormal);
@@ -4463,8 +4468,10 @@ bool CPhysical::ProcessCollisionSectorList_SimpleCar(CRepeatSector* repeatSector
     const auto ProcessSectorList = [&]<typename PtrListType>(PtrListType& list) -> CPhysical* {
         for (auto* const entity : list) {
             bool isLampTouchingGround = false;
-            if (entity->GetIsTypeObject() && entity->AsObject()->IsFallenLampPost())
+            // 0x54D0A0 - Not `IsFallenLampPost`, as this restores the lamp post's matrix if it has none
+            if (entity->GetIsTypeObject() && entity->AsObject()->objectFlags.bIsLampPost && entity->GetMatrix().GetUp().z < 0.66f) {
                 isLampTouchingGround = true;
+            }
 
             if (entity != this
                 && !isLampTouchingGround
@@ -4482,10 +4489,10 @@ bool CPhysical::ProcessCollisionSectorList_SimpleCar(CRepeatSector* repeatSector
         return nullptr;
     };
 
-    // Find entity we're colliding with
+    // Find entity we're colliding with, objects are checked first (0x54D050)
     CPhysical* entity;
-    if (!(entity = ProcessSectorList(repeatSector->Vehicles))) {
-        if (!(entity = ProcessSectorList(repeatSector->Objects))) {
+    if (!(entity = ProcessSectorList(repeatSector->Objects))) {
+        if (!(entity = ProcessSectorList(repeatSector->Vehicles))) {
             return false;
         }
     }
