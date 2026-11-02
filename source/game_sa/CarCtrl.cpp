@@ -652,7 +652,10 @@ void CCarCtrl::JoinCarWithRoadAccordingToMission(CVehicle* vehicle) {
     case MISSION_ESCORT_RIGHT_FARAWAY:
     case MISSION_ESCORT_REAR_FARAWAY:
     case MISSION_ESCORT_FRONT_FARAWAY: {
-        JoinCarWithRoadSystemGotoCoors(vehicle, vehicle->m_autoPilot.m_TargetEntity->GetPosition(), true, vehicle->IsSubBoat());
+        // 0x432D31 - The target may have been cleared (it's a reference) while the mission is still set
+        if (const auto* const target = vehicle->m_autoPilot.m_TargetEntity) {
+            JoinCarWithRoadSystemGotoCoors(vehicle, target->GetPosition(), true, vehicle->IsSubBoat());
+        }
         break;
     }
     }
