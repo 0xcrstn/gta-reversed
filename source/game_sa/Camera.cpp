@@ -942,14 +942,15 @@ void CCamera::UpdateTargetEntity() {
     const auto player = FindPlayerPed();
     assert(player);
 
-    auto something{ true };
+    // Whether the Obbe cinematic camera is in control (in modes 7 and 8 only if the player is arrested)
+    auto isObbeCamInControl{ m_nWhoIsInControlOfTheCamera == 2 };
     if (m_nWhoIsInControlOfTheCamera == 2) {
         m_nModeObbeCamIsInForCar = m_nModeObbeCamIsInForCar;
         switch (m_nModeObbeCamIsInForCar) {
         case 8:
         case 7: {
             if (player->m_nPedState != PEDSTATE_ARRESTED) {
-                something = false;
+                isObbeCamInControl = false;
             }
 
             if (!FindPlayerVehicle()) {
@@ -961,13 +962,12 @@ void CCamera::UpdateTargetEntity() {
         }
     }
 
-    if (!m_bLookingAtPlayer && !something || m_bTransitionState) {
+    if (!m_bLookingAtPlayer && !isObbeCamInControl || m_bTransitionState) {
         if (m_pTargetEntity) {
             if (!m_bTargetJustBeenOnTrain) {
                 return;
             }
         }
-        
     }
 
     bool playerDoingSomethingWhileDriveBy{};
