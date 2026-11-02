@@ -31,14 +31,13 @@ CTaskSimpleCarGoToPointNearDoorUntilDoorNotInUse::CTaskSimpleCarGoToPointNearDoo
 }
 
 // 0x646EC0
-CTaskSimpleCarGoToPointNearDoorUntilDoorNotInUse::CTaskSimpleCarGoToPointNearDoorUntilDoorNotInUse(const CTaskSimpleCarGoToPointNearDoorUntilDoorNotInUse&) :
+CTaskSimpleCarGoToPointNearDoorUntilDoorNotInUse::CTaskSimpleCarGoToPointNearDoorUntilDoorNotInUse(const CTaskSimpleCarGoToPointNearDoorUntilDoorNotInUse& o) :
     CTaskSimpleCarGoToPointNearDoorUntilDoorNotInUse{
-        m_TaskWaitForDoor->m_veh,
-        static_cast<int32>(m_TaskWaitForDoor->m_doorsToWaitFor[0]),
-        m_TaskGoToPoint->m_vecTargetPoint,
-        m_TaskGoToPoint->m_moveState
-    }
-{
+        o.m_TaskWaitForDoor->m_veh,
+        static_cast<int32>(o.m_TaskWaitForDoor->m_doorsToWaitFor[0]),
+        o.m_TaskGoToPoint->m_vecTargetPoint,
+        o.m_TaskGoToPoint->m_moveState
+    } {
 }
 
 // 0x646E50
