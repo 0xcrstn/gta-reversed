@@ -203,8 +203,8 @@ bool CPopCycle::FindNewPedType(ePedType& outPedType, eModelID& outPedMI, bool no
 }
 
 // 0x610310
-float CPopCycle::GetCurrentPercOther_Peds() {
-    const auto percOther = (float)m_nPercOther[CPopCycle::m_nCurrentTimeIndex][CPopCycle::m_nCurrentTimeOfWeek][CPopCycle::m_nCurrentZoneType];
+int32 CPopCycle::GetCurrentPercOther_Peds() {
+    const auto percOther = m_nPercOther[CPopCycle::m_nCurrentTimeIndex][CPopCycle::m_nCurrentTimeOfWeek][CPopCycle::m_nCurrentZoneType];
 
     if (CDarkel::FrenzyOnGoing()) {
         return percOther;
@@ -222,7 +222,8 @@ float CPopCycle::GetCurrentPercOther_Peds() {
         }
     }
 
-    return percOther * (1.f - std::sqrt(CWeather::Rain) * 0.8f);
+    // The original returns the percentage truncated to an integer
+    return (int32)((float)percOther * (1.f - std::sqrt(CWeather::Rain) * 0.8f));
 }
 
 // 0x610150
@@ -397,7 +398,7 @@ void CPopCycle::UpdateDealerStrengths() {
 
 // 0x610770
 void CPopCycle::UpdatePercentages() {
-    m_fPercDealers = std::max(0.1f, (float)m_pCurrZoneInfo->DealerStrength / 100.f);
+    m_fPercDealers = std::min(0.1f, (float)m_pCurrZoneInfo->DealerStrength / 100.f);
 
     m_fPercGangs = std::min(0.5f, (float)m_pCurrZoneInfo->GetSumOfGangDensity() / 100.f);
     m_fPercCops = m_fPercGangs >= 0.15f
@@ -436,30 +437,28 @@ void CPopCycle::UpdatePercentages() {
         : std::min(1.f, gfLaRiotsLightMult + 0.01f); // Increase
 
     // 0x610A41 + 0x610A57
-    const auto maxNumPeds = (float)(
-        CGameLogic::LaRiotsActiveHere()
-            ? std::min<uint8>(20u, GetMaxPedsCurrently())
-            : GetMaxPedsCurrently()
-    );
+    const auto maxNumPeds = CGameLogic::LaRiotsActiveHere()
+        ? (float)std::max<uint8>(20u, GetMaxPedsCurrently())
+        : (float)GetMaxPedsCurrently();
 
     // From all the data above, calculate the actual ped/car numbers for this zone
-    const auto Process = [
-        maxNumPeds,
-        maxNumCars = GetMaxCarsCurrently()
-    ](PercDataArray& maxPercLUT, float percPeds, float percCars, float& nOutPeds, float& nOutCars) {
-        const auto maxPercOfType = (float)maxPercLUT[m_nCurrentTimeIndex][m_nCurrentTimeOfWeek][m_nCurrentZoneType] / 100.f;
-
-        nOutPeds = maxNumPeds * (maxPercOfType * percPeds);
-        nOutCars = maxNumCars * (maxPercOfType * percCars);
+    const auto Process = [maxNumPeds, maxNumCars = GetMaxCarsCurrently()](int32 percOfTypePeds, int32 percOfTypeCars, float perc, float& nOutPeds, float& nOutCars) {
+        nOutPeds = maxNumPeds * ((float)percOfTypePeds / 100.f * perc);
+        nOutCars = maxNumCars * ((float)percOfTypeCars / 100.f * perc);
 
         if (CGameLogic::LaRiotsActiveHere()) {
             nOutCars *= 0.75f;
         }
     };
-    Process(m_nPercDealers, m_fPercDealers,                                    m_fPercDealers, m_NumDealers_Peds, m_NumDealers_Cars);
-    Process(m_nPercGang,    m_fPercGangs,                                      m_fPercGangs,   m_NumGangs_Peds,   m_NumGangs_Cars  );
-    Process(m_nPercCops,    m_fPercCops,                                       m_fPercCops,    m_NumCops_Peds,    m_NumCops_Cars   );
-    Process(m_nPercOther,   m_fPercOther * GetCurrentPercOther_Peds() / 100.f, m_fPercOther,   m_NumOther_Peds,   m_NumOther_Cars  );
+    const auto GetCurrentPerc = [](const PercDataArray& percLUT) {
+        return percLUT[m_nCurrentTimeIndex][m_nCurrentTimeOfWeek][m_nCurrentZoneType];
+    };
+    Process(GetCurrentPerc(m_nPercDealers), GetCurrentPerc(m_nPercDealers), m_fPercDealers, m_NumDealers_Peds, m_NumDealers_Cars);
+    Process(GetCurrentPerc(m_nPercGang), GetCurrentPerc(m_nPercGang), m_fPercGangs, m_NumGangs_Peds, m_NumGangs_Cars);
+    Process(GetCurrentPerc(m_nPercCops), GetCurrentPerc(m_nPercCops), m_fPercCops, m_NumCops_Peds, m_NumCops_Cars);
+
+    // 0x610A27: Civilian peds use the rain adjusted percentage, which already includes the table value
+    Process(GetCurrentPercOther_Peds(), GetCurrentPerc(m_nPercOther), m_fPercOther, m_NumOther_Peds, m_NumOther_Cars);
 }
 
 // 0x60F8D0
