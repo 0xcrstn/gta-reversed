@@ -121,7 +121,7 @@ CBike::CBike(int32 modelIndex, eVehicleCreatedBy createdBy) : CVehicle(createdBy
     for (auto i = 0; i < 4; ++i) {
         m_aWheelColPoints[i] = {};
         m_aWheelRatios[i] = 1.0f;
-        m_aRatioHistory[i] = 0.0f;
+        m_aRatioHistory[i]       = 1.0f;
         m_WheelCounts[i] = 0.0f;
         m_fSuspensionLength[i] = 0.0f;
         m_fLineLength[i] = 0.0f;
@@ -376,8 +376,9 @@ bool CBike::ProcessAI(uint32& extraHandlingFlags) {
 
 // 0x6BF400
 void CBike::ProcessDrivingAnims(CPed* driver, bool blend) {
-    if (m_bOffscreen && GetStatus() == STATUS_PLAYER)
+    if (m_bOffscreen && GetStatus() != STATUS_PLAYER) {
         return;
+    }
 
     ProcessRiderAnims(driver, this, &m_RideAnimData, m_BikeHandling, 0);
 }
@@ -431,10 +432,8 @@ int32 CBike::ProcessEntityCollision(CEntity* entity, CColPoint* outColPoints) {
     if (m_pDriver && m_nTestPedCollision) {
         const auto pcd = m_pDriver->GetColData();
         if (!pcd->m_nNumLines) {
-            std::array<CColPoint, 32> pedCPs{};
-
             CMatrix driverMat = GetMatrix();
-            driverMat.GetPosition() += GetDriverSeatDummyPositionWS();
+            driverMat.GetPosition() = GetDriverSeatDummyPositionWS();
 
             std::array<CColPoint, 32> pedEntityColPts{};
             const auto numPedEntityColPts = CCollision::ProcessColModels(
@@ -450,8 +449,8 @@ int32 CBike::ProcessEntityCollision(CEntity* entity, CColPoint* outColPoints) {
                 if (m_nTestPedCollision == 1) {
                     m_nTestPedCollision = 0;
                 } else {
-                    for (auto i = 0; i < numPedEntityColPts && numColPts < 32; i++) {
-                        const auto& pedEntityCP = pedCPs[i];
+                    for (auto i = 0; i < numPedEntityColPts && numColPts < 31; i++) {
+                        const auto& pedEntityCP = pedEntityColPts[i];
                         if (pedEntityCP.m_nPieceTypeA == PED_COL_SPHERE_LEG) {
                             continue;
                         }
