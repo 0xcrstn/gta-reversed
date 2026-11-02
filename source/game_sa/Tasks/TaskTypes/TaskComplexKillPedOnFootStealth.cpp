@@ -28,8 +28,7 @@ CTaskComplexKillPedOnFootStealth::CTaskComplexKillPedOnFootStealth(CPed* target)
 
 // NOTSA (For 0x623400)
 CTaskComplexKillPedOnFootStealth::CTaskComplexKillPedOnFootStealth(const CTaskComplexKillPedOnFootStealth& o) :
-    CTaskComplexKillPedOnFootStealth{m_target}
-{
+    CTaskComplexKillPedOnFootStealth{ o.m_target } {
 }
 
 // 0x62B790
