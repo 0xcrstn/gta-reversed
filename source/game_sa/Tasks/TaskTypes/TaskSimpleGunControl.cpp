@@ -192,7 +192,10 @@ bool CTaskSimpleGunControl::ProcessPed(CPed* ped) {
             if (m_burstAmmoCnt > 1) {
                 if (ped->m_nWeaponShootingRate < 100u) {
                     m_burstAmmoCnt = std::min((int16)(4 * ped->m_nWeaponShootingRate / 30), m_burstAmmoCnt);
-                    m_burstAmmoCnt = std::max(m_burstAmmoCnt - CGeneral::GetRandomNumberInRange(0, 2), 1);
+                    // 0x6255BF - The original draws twice: the first draw only decides whether the burst is clamped to 1
+                    m_burstAmmoCnt = m_burstAmmoCnt - CGeneral::GetRandomNumberInRange(0, 2) >= 1
+                        ? m_burstAmmoCnt - CGeneral::GetRandomNumberInRange(0, 2)
+                        : 1;
                 }
             }
 
@@ -225,18 +228,12 @@ bool CTaskSimpleGunControl::ProcessPed(CPed* ped) {
     if (dontCheckLeisureDur || !m_leisureDurMs) { // 0x625681
         using enum eGunCommand;
 
-            if (useGunTask && (m_firingTask != END_LEISURE || !useGunTask->m_IsFinished)) {
-                if (useGunTask->m_HasFiredGun) {
-                    switch ((eGunCommand)useGunTask->m_LastCmd) {
-                    case FIRE:
-                    case FIREBURST:
-                        break;
-                default: {
-                    useGunTask->m_CountDownFrames = 2;
-                    useGunTask->m_HasFiredGun = false;
-                    }
-                }
-            }
+        // 0x62568E - Don't finish while the gun is still firing (`FIRE`/`FIREBURST`)
+        if (!useGunTask || (m_firingTask == END_LEISURE && useGunTask->m_IsFinished)) {
+            m_isFinished = true;
+        } else if (useGunTask->m_HasFiredGun && !notsa::contains({ FIRE, FIREBURST }, useGunTask->m_LastCmd)) {
+            useGunTask->m_CountDownFrames = 2;
+            useGunTask->m_HasFiredGun     = false;
             m_isFinished = true;
         }
 
@@ -293,16 +290,15 @@ bool CTaskSimpleGunControl::ProcessPed(CPed* ped) {
             return false;
         }
 
-        if (!isRightArmBlockedForPistolWhip) {
-            if (pedToTarget.SquaredMagnitude() >= 6.f) {
-                if ((eGunCommand)useGunTask->m_LastCmd == eGunCommand::FIREBURST) {
-                    if (winfo.flags.bMoveFire) {
-                        return false;
-                    }
-                }
-            }
+        if (isRightArmBlockedForPistolWhip) {
+            return true;
         }
-        return true;
+
+        // 0x625901 - Back away from close targets, unless firing a burst with a weapon that can't move while firing
+        if (pedToTarget.SquaredMagnitude() >= 6.f) {
+            return false;
+        }
+        return useGunTask->m_LastCmd != eGunCommand::FIREBURST || winfo.flags.bMoveFire;
     }()) {
         useGunTask->ControlGunMove({ 0.f, 1.f });
     } else if (m_targetEntity) {

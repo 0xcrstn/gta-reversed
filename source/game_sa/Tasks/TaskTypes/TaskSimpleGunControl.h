@@ -37,7 +37,7 @@ public:
     eGunCommand m_firingTask{};
     float       m_attackIntervalMult{};
     uint32      m_nextAtkTimeMs{};
-    bool        m_isFirstTime{};
+    bool        m_isFirstTime{ true };
     bool        m_isLOSBlocked{true};
     bool        m_aimImmidiately{};
 
