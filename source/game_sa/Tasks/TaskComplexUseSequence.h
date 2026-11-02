@@ -27,6 +27,10 @@ private:
 
     CTaskComplexUseSequence* Constructor(int32 sequenceIndex);
 
+    CTaskComplexUseSequence* Destructor() {
+        this->CTaskComplexUseSequence::~CTaskComplexUseSequence();
+        return this;
+    }
 
 public:
     int32 m_nSequenceIndex{};         /**< Used in CTaskSequences::ms_taskSequence global array */
