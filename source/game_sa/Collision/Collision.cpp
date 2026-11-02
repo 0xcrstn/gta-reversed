@@ -101,7 +101,7 @@ void CCollision::RemoveTrianglePlanes(CCollisionData* colData) {
 bool CCollision::TestSphereSphere(CColSphere const& sphere1, CColSphere const& sphere2) { // Yes, it's __stdcall
     ZoneScoped;
 
-    return (sphere1.m_vecCenter - sphere2.m_vecCenter).SquaredMagnitude() <= sq(sphere1.m_fRadius + sphere2.m_fRadius);
+    return (sphere1.m_vecCenter - sphere2.m_vecCenter).SquaredMagnitude() < sq(sphere1.m_fRadius + sphere2.m_fRadius); // Touching spheres don't count
 }
 
 // 0x411EC0
