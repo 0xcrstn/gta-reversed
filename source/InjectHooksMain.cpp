@@ -1206,7 +1206,7 @@ void InjectHooksMain() {
         // CTaskSimpleChoking::InjectHooks();
         CTaskComplexPartnerChat::InjectHooks();
         CTaskSimpleUseGun::InjectHooks();
-        // CTaskSimpleGangDriveBy::InjectHooks();
+        CTaskSimpleGangDriveBy::InjectHooks();
         CTaskComplexObserveTrafficLightsAndAchieveHeading::InjectHooks();
         CTaskSimpleInAir::InjectHooks();
         // CTaskComplexHitPedWithCar::InjectHooks();
