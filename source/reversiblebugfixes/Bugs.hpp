@@ -163,6 +163,12 @@ inline const ReversibleBugFix CPedGeometryAnalyser_ComputeRouteRoundSphere_Ambig
     .Description = "Fix missing setting of detour target when the ped is on the edge of the sphere in `CPedGeometryAnalyser::ComputeRouteRoundSphere`",
     .Credit      = "Pirulax"
 };
+inline const ReversibleBugFix CCollision_SphereCastVsEntity_SphereBRadius{
+    .Name        = "CCollision::SphereCastVsEntity - Wrong radius of the 2nd sphere",
+    .Description = "The original uses the 1st sphere's radius for the 2nd (object space) sphere too. "
+                   "No effect in vanilla, as the camera code always passes 2 spheres of the same radius.",
+    .Credit      = "Contributors"
+};
 inline const ReversibleBugFix CObjectData_SetObjectData_UninitializedPhysics{
     .Name        = "Physics of objects without object.dat data",
     .Description = "Give an object with no object.dat entry the default elasticity and buoyancy - neither SetObjectData nor CPhysical's constructor sets them, so they held the pool slot's leftovers and could launch a vehicle that touched the object to infinity",
