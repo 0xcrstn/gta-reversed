@@ -29,8 +29,7 @@ void CPedGroupMembership::AddFollower(CPed* ped) {
     }
 
     const auto memId = FindIdForNewMember();
-    assert(memId != -1); 
-    if (memId == -1) {
+    if (memId == -1) { // No free follower slot, the ped isn't added
         return;
     }
 
@@ -155,6 +154,9 @@ void CPedGroupMembership::Process() {
         if (sq(m_separationRange) >= (leaderPos - mem->GetPosition()).SquaredMagnitude()) {
             continue;
         }
+        if (mem->GetAreaCode() != GetLeader()->GetAreaCode()) { // Only peds in the leader's area are removed
+            continue;
+        }
         RemoveMember(i); // Ped is too far
     }
 }
@@ -173,15 +175,12 @@ void CPedGroupMembership::RemoveAllFollowers(bool bCreatedByMissionOnly) {
 }
 
 // 0x5FB1D0
-void CPedGroupMembership::RemoveNFollowers(size_t count) {
-    if (count == 0) { // Nothing to do
+void CPedGroupMembership::RemoveNFollowers(int32 count) {
+    if (count <= 0) { // Nothing to do (The count is signed)
         return;
     }
-    for (auto&& [i, mem] : rngv::enumerate(m_members)) {
-        if (IsLeader(mem)) { // Leader isn't a follower
-            continue;
-        }
-        if (mem->IsCreatedBy(PED_MISSION)) {
+    for (auto&& [i, mem] : rngv::enumerate(m_members | rngv::take(TOTAL_PED_GROUP_FOLLOWERS))) { // Leader isn't a follower
+        if (!mem || mem->IsCreatedBy(PED_MISSION)) {
             continue;
         }
         RemoveMember(i);
@@ -266,12 +265,14 @@ CPed* CPedGroupMembership::GetFirstAvailableMember() {
 // 0x5F6950
 eModelID CPedGroupMembership::GetObjectForPedToHold() {
     using namespace ModelIndices;
-    return CGeneral::RandomChoiceFromList<eModelID>({ 
-        /* Each has 1/3 chance (Originally 33/33/34) */
-        MI_GANG_SMOKE, 
-        MODEL_INVALID, 
-        MI_GANG_DRINK 
-    }); 
+    const auto rnd = CGeneral::GetRandomNumberInRange(0, 100);
+    if (rnd < 33) {
+        return MI_GANG_SMOKE;
+    }
+    if (rnd < 66) {
+        return MI_GANG_DRINK;
+    }
+    return MODEL_INVALID;
 }
 
 // NOTSA
@@ -286,7 +287,7 @@ int32 CPedGroupMembership::FindNewLeaderToAppoint() const {
 
 // NOTSA
 int32 CPedGroupMembership::FindIdForNewMember() const {
-    for (auto&& [i, mem] : rngv::enumerate(m_members)) {
+    for (auto&& [i, mem] : rngv::enumerate(m_members | rngv::take(TOTAL_PED_GROUP_FOLLOWERS))) { // Never the leader's slot (0x5F807D)
         if (!mem) {
             return i;
         }
