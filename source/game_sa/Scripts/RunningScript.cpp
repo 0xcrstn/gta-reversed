@@ -486,7 +486,12 @@ void CRunningScript::SetCharCoordinates(CPed& ped, CVector posn, bool warpGang, 
 
 // 0x463CA0
 tScriptParam* CRunningScript::GetPointerToLocalVariable(int32 loc) {
-    return &GetLocal<tScriptParam>(loc);
+    // Unlike `GetLocal`, the original uses the whole `loc` (no truncation to `scm::VarLoc`)
+    const auto vars = m_ThisMustBeTheOnlyMissionRunning
+        ? std::span<tScriptParam>{ CTheScripts::LocalVariablesForCurrentMission }
+        : std::span<tScriptParam>{ m_LocalVars };
+    assert(loc >= 0 && (size_t)loc < vars.size());
+    return vars.data() + loc;
 }
 
 /*!
@@ -498,7 +503,7 @@ tScriptParam* CRunningScript::GetPointerToLocalVariable(int32 loc) {
  * @param arrayEntriesSizeAsParams Size of 1 variable in the array (In terms of `tScriptParam`'s - So for a regular `int` (or float, etc) variable this will be `1`, for long strings it's `4` and for short one's it's `2`)
  */
 tScriptParam* CRunningScript::GetPointerToLocalArrayElement(int32 arrayBaseOffset, uint16 index, uint8 arrayEntriesSizeAsParams) {
-    return &GetArrayLocal<tScriptParam>(arrayBaseOffset, index, arrayEntriesSizeAsParams);
+    return GetPointerToLocalVariable(arrayBaseOffset + index * arrayEntriesSizeAsParams); // The offset isn't truncated to `scm::VarLoc` either
 }
 
 /*!
