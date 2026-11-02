@@ -27,8 +27,8 @@ CTaskSimpleCarShuffle::CTaskSimpleCarShuffle(CVehicle* car, int32 targetDoor, CT
 }
 
 // 0x649C40
-CTaskSimpleCarShuffle::CTaskSimpleCarShuffle(const CTaskSimpleCarShuffle&) :
-    CTaskSimpleCarShuffle{ m_Car, m_TargetDoor, m_LineUpUtility }
+CTaskSimpleCarShuffle::CTaskSimpleCarShuffle(const CTaskSimpleCarShuffle& o) :
+    CTaskSimpleCarShuffle{ o.m_Car, o.m_TargetDoor, o.m_LineUpUtility } // The source task's fields (+0x10, +0x14, +0x18)
 {
 }
 
@@ -43,9 +43,10 @@ CTaskSimpleCarShuffle::~CTaskSimpleCarShuffle() {
 void CTaskSimpleCarShuffle::FinishAnimCarShuffleCB(CAnimBlendAssociation* anim, void* data) {
     const auto self = notsa::cast<CTaskSimpleCarShuffle>(static_cast<CTask*>(data));
 
-    assert(self->m_Anim == anim);
-
-    self->m_Anim->SetBlendDelta(-1000.f);
+    // The original uses the task's `m_Anim` (not `anim`), which may be null
+    if (self->m_Anim) {
+        self->m_Anim->SetBlendDelta(-1000.f);
+    }
     self->m_Anim = nullptr;
 
     self->m_IsFinished = true;
