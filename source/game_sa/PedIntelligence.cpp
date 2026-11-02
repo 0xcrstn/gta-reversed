@@ -195,7 +195,8 @@ bool CPedIntelligence::IsInSeeingRange(const CVector& posn) const {
 // 0x600CF0
 bool CPedIntelligence::FindRespectedFriendInInformRange() {
     auto respect = m_pPed->GetAcquaintance().GetAcquaintances(ACQUAINTANCE_RESPECT);
-    for (uint32 pedScanIndex = 0; pedScanIndex < m_nDmNumPedsToScan; pedScanIndex++) {
+    // The original compares `m_nDmNumPedsToScan` signed, and also stops at the end of the ped entity array
+    for (auto pedScanIndex = 0; pedScanIndex < (int32)m_nDmNumPedsToScan && pedScanIndex < (int32)m_pedScanner.m_apEntities.size(); pedScanIndex++) {
         CPed* pedEntity = GetPedEntities()[pedScanIndex]->AsPed();
         if (pedEntity) {
             if (CPedType::GetPedFlag(pedEntity->m_nPedType) & respect) {
@@ -718,24 +719,30 @@ bool CPedIntelligence::TestForStealthKill(CPed* target, bool bFullTest) {
         }
     }
 
-    CEvent* currentEvent = target->GetEventHandlerHistory().GetCurrentEvent();
-    if (currentEvent && currentEvent->GetSourceEntity() == m_pPed)
-    {
-        // todo: IsThreatenedBy ???
-        auto hate = target->GetAcquaintance().GetAcquaintances(ACQUAINTANCE_HATE);
-        auto dislike = target->GetAcquaintance().GetAcquaintances(ACQUAINTANCE_DISLIKE);
-        auto pedFlag = CPedType::GetPedFlag(m_pPed->m_nPedType);
-        bool bAcquaintancesFlagSet = (
-            (hate && (pedFlag & hate)) ||
-            (dislike && (pedFlag & dislike))
-        );
-        if (bAcquaintancesFlagSet && target->GetGroup()) {
-            const auto oe = target->GetGroup()->GetIntelligence().GetCurrentEvent();
-            if (oe && oe->GetSourceEntity() == m_pPed && bAcquaintancesFlagSet) {
+    // Does the target hate or dislike us?
+    // todo: IsThreatenedBy ???
+    const auto IsHatedOrDislikedByTarget = [&] {
+        const auto pedFlag = CPedType::GetPedFlag(m_pPed->m_nPedType);
+        return (target->GetAcquaintance().GetAcquaintances(ACQUAINTANCE_HATE) & pedFlag)
+            || (target->GetAcquaintance().GetAcquaintances(ACQUAINTANCE_DISLIKE) & pedFlag);
+    };
+
+    // The target is responding to an event caused by us
+    if (const auto currentEvent = target->GetEventHandlerHistory().GetCurrentEvent()) {
+        if (currentEvent->GetSourceEntity() == m_pPed && IsHatedOrDislikedByTarget()) {
+            return false;
+        }
+    }
+
+    // The target's group is responding to an event caused by us
+    if (const auto group = target->GetGroup()) {
+        if (const auto groupEvent = group->GetIntelligence().GetCurrentEvent()) {
+            if (groupEvent->GetSourceEntity() == m_pPed && IsHatedOrDislikedByTarget()) {
                 return false;
             }
         }
     }
+
     return true;
 }
 
@@ -964,7 +971,7 @@ void CPedIntelligence::Process() {
 // 0x4B85B0
 CTask* CPedIntelligence::GetActivePrimaryTask() const {
     for (const auto i : { TASK_PRIMARY_PHYSICAL_RESPONSE, TASK_PRIMARY_EVENT_RESPONSE_TEMP, TASK_PRIMARY_EVENT_RESPONSE_NONTEMP }) {
-        if (CTask* task = m_TaskMgr.GetTaskPrimary(TASK_PRIMARY_PHYSICAL_RESPONSE)) {
+        if (CTask* task = m_TaskMgr.GetTaskPrimary(i)) {
             return task;
         }
     }
