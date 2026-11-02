@@ -1083,6 +1083,7 @@ void CEventHandler::ComputeDamageResponse(CEventDamage* e, CTask* tactive, CTask
                             a->SetBlend(0.f, e->m_fAnimBlend);
                             a->SetSpeed(e->m_fAnimSpeed);
                             a->SetCurrentTime(0.f);
+                            e->m_bAnimAdded = true; // 0x4C051C
                         }
                     }
                 } else { // 0x4C0593 
