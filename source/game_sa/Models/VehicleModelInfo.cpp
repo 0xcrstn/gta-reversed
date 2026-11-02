@@ -407,12 +407,13 @@ void CVehicleModelInfo::ChooseVehicleColour(uint8& prim, uint8& sec, uint8& tert
         return;
     }
 
+    // The original indexes the colours with the variation stored as a byte, not with the remainder itself
     auto iVariation = (variationShift + m_nLastColorVariation) % m_nNumColorVariations;
     m_nLastColorVariation = iVariation;
-    prim = m_anPrimaryColors[iVariation];
-    sec = m_anSecondaryColors[iVariation];
-    tert = m_anTertiaryColors[iVariation];
-    quat = m_anQuaternaryColors[iVariation];
+    prim                  = m_anPrimaryColors[m_nLastColorVariation];
+    sec                   = m_anSecondaryColors[m_nLastColorVariation];
+    tert                  = m_anTertiaryColors[m_nLastColorVariation];
+    quat                  = m_anQuaternaryColors[m_nLastColorVariation];
 
     if (m_nNumColorVariations <= 1)
         return;
@@ -429,10 +430,10 @@ void CVehicleModelInfo::ChooseVehicleColour(uint8& prim, uint8& sec, uint8& tert
 
         iVariation = (variationShift + m_nLastColorVariation) % m_nNumColorVariations;
         m_nLastColorVariation = iVariation;
-        prim = m_anPrimaryColors[iVariation];
-        sec = m_anSecondaryColors[iVariation];
-        tert = m_anTertiaryColors[iVariation];
-        quat = m_anQuaternaryColors[iVariation];
+        prim                  = m_anPrimaryColors[m_nLastColorVariation];
+        sec                   = m_anSecondaryColors[m_nLastColorVariation];
+        tert                  = m_anTertiaryColors[m_nLastColorVariation];
+        quat                  = m_anQuaternaryColors[m_nLastColorVariation];
     }
 }
 
