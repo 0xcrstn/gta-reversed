@@ -282,10 +282,10 @@ void CControllerConfigManager::AffectControllerStateOn_ButtonDown_FirstAndThirdP
     CheckAndSetButton(PED_FIRE_WEAPON, type, button, state.ButtonCircle);
     CheckAndSetButton(PED_FIRE_WEAPON_ALT, type, button, state.LeftShoulder1);
     CheckAndSetButton(PED_LOCK_TARGET, type, button, state.RightShoulder1);
-    CheckAndSetStick(GO_FORWARD, type, button, state.LeftStickY, m_bStickL_Up_Dwn_MovementBothDown[+type], -128);
-    CheckAndSetStick(GO_BACK, type, button, state.LeftStickY, m_bStickL_Up_Dwn_MovementBothDown[+type], 128);
-    CheckAndSetStick(GO_LEFT, type, button, state.LeftStickX, m_bStickL_X_Rgh_Lft_MovementBothDown[+type], -128);
-    CheckAndSetStick(GO_RIGHT, type, button, state.LeftStickX, m_bStickL_X_Rgh_Lft_MovementBothDown[+type], 128);
+    CheckAndSetLeftStick(GO_FORWARD, type, button, state.LeftStickY, m_bStickL_Up_Dwn_MovementBothDown[+type], -128); // 0x52FAFB
+    CheckAndSetLeftStick(GO_BACK, type, button, state.LeftStickY, m_bStickL_Up_Dwn_MovementBothDown[+type], 128);
+    CheckAndSetLeftStick(GO_LEFT, type, button, state.LeftStickX, m_bStickL_X_Rgh_Lft_MovementBothDown[+type], -128);
+    CheckAndSetLeftStick(GO_RIGHT, type, button, state.LeftStickX, m_bStickL_X_Rgh_Lft_MovementBothDown[+type], 128);
     CheckAndSetButton(PED_WALK, type, button, state.m_bPedWalk);
     CheckAndSetPad(GROUP_CONTROL_FWD, type, button, state.DPadDown, state.DPadUp);
     CheckAndSetPad(GROUP_CONTROL_BWD, type, button, state.DPadUp, state.DPadDown);
@@ -359,10 +359,10 @@ void CControllerConfigManager::AffectControllerStateOn_ButtonDown_Driving(KeyCod
     CheckAndSetButton(VEHICLE_HANDBRAKE, type, button, state.RightShoulder1);
     CheckAndSetButton(VEHICLE_ACCELERATE, type, button, state.ButtonCross);
     CheckAndSetButton(VEHICLE_BRAKE, type, button, state.ButtonSquare);
-    CheckAndSetStick(VEHICLE_STEERUP, type, button, state.LeftStickY, m_bStickL_Up_Dwn_MovementBothDown[+type], -128);
-    CheckAndSetStick(VEHICLE_STEERDOWN, type, button, state.LeftStickY, m_bStickL_Up_Dwn_MovementBothDown[+type], 128);
-    CheckAndSetStick(VEHICLE_STEERLEFT, type, button, state.LeftStickX, m_bStickL_X_Rgh_Lft_MovementBothDown[+type], -128);
-    CheckAndSetStick(VEHICLE_STEERRIGHT, type, button, state.LeftStickX, m_bStickL_X_Rgh_Lft_MovementBothDown[+type], 128);
+    CheckAndSetLeftStick(VEHICLE_STEERUP, type, button, state.LeftStickY, m_bStickL_Up_Dwn_MovementBothDown[+type], -128);
+    CheckAndSetLeftStick(VEHICLE_STEERDOWN, type, button, state.LeftStickY, m_bStickL_Up_Dwn_MovementBothDown[+type], 128);
+    CheckAndSetLeftStick(VEHICLE_STEERLEFT, type, button, state.LeftStickX, m_bStickL_X_Rgh_Lft_MovementBothDown[+type], -128);
+    CheckAndSetLeftStick(VEHICLE_STEERRIGHT, type, button, state.LeftStickX, m_bStickL_X_Rgh_Lft_MovementBothDown[+type], 128);
     CheckAndSetButton(VEHICLE_RADIO_STATION_UP, type, button, state.DPadUp);
     CheckAndSetButton(VEHICLE_RADIO_STATION_DOWN, type, button, state.DPadDown);
     CheckAndSetButton(VEHICLE_RADIO_TRACK_SKIP, type, button, state.m_bRadioTrackSkip);
@@ -1416,6 +1416,13 @@ void CControllerConfigManager::CheckAndSetStick(eControllerAction action, eContr
         } else {
             state = value;
         }
+    }
+}
+
+// Unlike `CheckAndSetStick`, the left stick only checks the stored flag: it neither checks for the opposite direction nor sets the flag
+void CControllerConfigManager::CheckAndSetLeftStick(eControllerAction action, eControllerType type, KeyCode button, int16& state, bool movementBothDown, int16 value) {
+    if (GetControllerKeyAssociatedWithAction(action, type) == button) {
+        state = movementBothDown ? 0 : value;
     }
 }
 
