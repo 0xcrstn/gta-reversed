@@ -16,9 +16,9 @@ void CScriptsForBrains::InjectHooks() {
     RH_ScopedInstall(StartAttractorScriptBrainWithThisName, 0x46B390);
     RH_ScopedInstall(StartOrRequestNewStreamedScriptBrain, 0x46CD80, {.Reversed = false});
     //RH_ScopedInstall(StartOrRequestNewStreamedScriptBrainWithThisName, 0x46CED0, {.Reversed = false});
-    RH_ScopedInstall(IsObjectWithinBrainActivationRange, 0x46B3D0, {.Reversed = false});
+    RH_ScopedInstall(IsObjectWithinBrainActivationRange, 0x46B3D0);
     RH_ScopedInstall(CheckIfNewEntityNeedsScript, 0x46FF20, { .Reversed = false });
-    RH_ScopedInstall(MarkAttractorScriptBrainWithThisNameAsNoLongerNeeded, 0x46AAE0, { .Reversed = false });
+    RH_ScopedInstall(MarkAttractorScriptBrainWithThisNameAsNoLongerNeeded, 0x46AAE0);
     RH_ScopedInstall(RequestAttractorScriptBrainWithThisName, 0x46AA80, { .Reversed = false });
 }
 
@@ -34,8 +34,14 @@ void CScriptsForBrains::CheckIfNewEntityNeedsScript(CEntity* entity, int8 attach
     plugin::CallMethod<0x46FF20, CScriptsForBrains*, CEntity*, int8, void*>(this, entity, attachType, unused);
 }
 
+// 0x46AAE0
 void CScriptsForBrains::MarkAttractorScriptBrainWithThisNameAsNoLongerNeeded(const char* name) {
-    plugin::CallMethod<0x46AAE0, CScriptsForBrains*, const char*>(this, name);
+    if (const auto idx = GetIndexOfScriptBrainWithThisName(name, 5); idx >= 0) {
+        auto& numUsers = CTheScripts::StreamedScripts.m_aScripts[m_aScriptForBrains[idx].m_StreamedScriptIndex].m_NumberOfUsers;
+        if (numUsers > 0) {
+            numUsers--;
+        }
+    }
 }
 
 void CScriptsForBrains::RequestAttractorScriptBrainWithThisName(const char* name) {
@@ -57,8 +63,13 @@ bool CScriptsForBrains::HasAttractorScriptBrainWithThisNameLoaded(const char* na
     return false;
 }
 
+// 0x46B3D0
 bool CScriptsForBrains::IsObjectWithinBrainActivationRange(CObject* entity, const CVector& point) {
-    NOTSA_UNREACHABLE();
+    const auto& brain = m_aScriptForBrains[entity->m_nStreamedScriptBrainToLoad];
+    if (brain.m_TypeOfBrain != 1) { // TODO: enum
+        return false;
+    }
+    return CVector::Dist(point, entity->GetPosition()) < brain.m_ObjectBrainActivationRadius;
 }
 
 int16 CScriptsForBrains::GetIndexOfScriptBrainWithThisName(const char* name, int8 type) {
