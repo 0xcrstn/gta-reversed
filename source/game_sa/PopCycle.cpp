@@ -370,7 +370,7 @@ void CPopCycle::UpdateDealerStrengths() {
         return;
     }
 
-    if (CTimer::GetTimeInMS() / 60000 != CTimer::GetPreviousTimeInMS() / 60000) {
+    if (CTimer::GetTimeInMS() / 60'000 == CTimer::GetPreviousTimeInMS() / 60'000) { // Once a minute
         return;
     }
 
@@ -385,15 +385,14 @@ void CPopCycle::UpdateDealerStrengths() {
         }
 
         constexpr float chances[]{ 0.05f, 0.2f, 0.3f, 0.35f, 0.4f, 0.5f, 0.55f, 0.6f, 0.65f, 0.7f, 0.7f, 0.7f, 0.7f, 0.7f, 0.7f }; // 0x8D24F0
-        if (zone.DealerStrength >= std::size(chances)) {
+        // 0x610505: At the highest strength the last chance is used, so the random number is still drawn
+        if (CGeneral::GetRandomNumberInRange(0.f, 1.f) >= chances[std::min<size_t>(zone.DealerStrength, std::size(chances) - 1)]) {
             continue;
         }
 
-        if (CGeneral::GetRandomNumber() >= chances[zone.DealerStrength]) {
-            continue;
+        if (zone.DealerStrength < std::size(chances)) {
+            zone.DealerStrength++;
         }
-
-        zone.DealerStrength++;
     }
 }
 
