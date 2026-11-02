@@ -124,9 +124,9 @@ void CCarCtrl::InjectHooks()
     RH_ScopedInstall(SteerAIPlaneToCrashAndBurn, 0x423880, { .Reversed = false });
     RH_ScopedInstall(SteerAIPlaneToFollowEntity, 0x4237F0, { .Reversed = false });
     RH_ScopedInstall(SteerAIPlaneTowardsTargetCoors, 0x423790, { .Reversed = false });
-    RH_ScopedInstall(StopCarIfNodesAreInvalid, 0x422590, { .Reversed = false });
+    RH_ScopedInstall(StopCarIfNodesAreInvalid, 0x422590);
     RH_ScopedInstall(SwitchBetweenPhysicsAndGhost, 0x4222A0, { .Reversed = false });
-    RH_ScopedInstall(SwitchVehicleToRealPhysics, 0x423FC0, { .Reversed = false });
+    RH_ScopedInstall(SwitchVehicleToRealPhysics, 0x423FC0);
     RH_ScopedInstall(TestCollisionBetween2MovingRects, 0x425B30, { .Reversed = false });
     RH_ScopedInstall(TestCollisionBetween2MovingRects_OnlyFrontBumper, 0x425F70, { .Reversed = false });
     RH_ScopedInstall(TestWhetherToFirePlaneGuns, 0x429520, { .Reversed = false });
@@ -1051,7 +1051,19 @@ void CCarCtrl::SteerAIPlaneTowardsTargetCoors(CAutomobile* automobile) {
 
 // 0x422590
 bool CCarCtrl::StopCarIfNodesAreInvalid(CVehicle* vehicle) {
-    return plugin::CallAndReturn<bool, 0x422590, CVehicle*>(vehicle);
+    const auto IsLinkValid = [](CCarPathLinkAddress link) {
+        return link.IsValid() && ThePaths.IsAreaLoaded(link.m_wAreaId);
+    };
+    const auto IsNodeValid = [](CNodeAddress node) {
+        return node.IsAreaValid() && ThePaths.IsAreaNodesAvailable(node);
+    };
+
+    auto& autoPilot = vehicle->m_autoPilot;
+    if (IsLinkValid(autoPilot.m_nCurrentPathNodeInfo) && IsLinkValid(autoPilot.m_nNextPathNodeInfo) && IsNodeValid(autoPilot.m_currentAddress) && IsNodeValid(autoPilot.m_startingRouteNode)) {
+        return false;
+    }
+    autoPilot.movementFlags.bIsStopped = true;
+    return true;
 }
 
 // 0x4222A0
@@ -1061,7 +1073,11 @@ void CCarCtrl::SwitchBetweenPhysicsAndGhost(CVehicle* vehicle) {
 
 // 0x423FC0
 void CCarCtrl::SwitchVehicleToRealPhysics(CVehicle* vehicle) {
-    plugin::Call<0x423FC0, CVehicle*>(vehicle);
+    vehicle->SetStatus(STATUS_PHYSICS);
+    vehicle->m_autoPilot.ClearTempAct();
+    vehicle->m_autoPilot.m_nTimeToStartMission        = CTimer::GetTimeInMS() + 2'000;
+    vehicle->m_autoPilot.m_nTimeSwitchedToRealPhysics = CTimer::GetTimeInMS();
+    vehicle->m_nFakePhysics                           = 0;
 }
 
 // 0x425B30
