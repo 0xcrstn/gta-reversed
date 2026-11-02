@@ -28,8 +28,8 @@ CTaskComplexPlayHandSignalAnim::CTaskComplexPlayHandSignalAnim(AnimationId anima
 // 0x61BDF0
 CTaskComplexPlayHandSignalAnim::~CTaskComplexPlayHandSignalAnim() {
     enum {
-        RIGHT,
         LEFT,
+        RIGHT,
     };
     enum {
         NONFAT,
@@ -41,9 +41,12 @@ CTaskComplexPlayHandSignalAnim::~CTaskComplexPlayHandSignalAnim() {
         { MODEL_SHANDR, MODEL_FHANDR }  // right
     };
 
-    // Remove hand model refs
-    for (const auto i : { LEFT, RIGHT }) {
-        CModelInfo::GetModelInfo(handModels[i][m_DoUseFatHands ? FAT : NONFAT])->RemoveRef();
+    // Remove the hand model refs (Only the ones `ControlSubTask` added)
+    if (m_bLeftHandLoaded) {
+        CModelInfo::GetModelInfo(handModels[LEFT][m_DoUseFatHands ? FAT : NONFAT])->RemoveRef();
+    }
+    if (m_bRightHandLoaded) {
+        CModelInfo::GetModelInfo(handModels[RIGHT][m_DoUseFatHands ? FAT : NONFAT])->RemoveRef();
     }
 
     // Deal with anim
