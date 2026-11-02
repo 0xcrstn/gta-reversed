@@ -1367,11 +1367,17 @@ void CEventHandler::ComputeGunAimedAtResponse(CEventGunAimedAt* e, CTask* tactiv
             return nullptr;
         }
 
-        const auto IsFleeTask = [](CTask* t) {
-            return notsa::contains({TASK_COMPLEX_SMART_FLEE_ENTITY, TASK_COMPLEX_SMART_FLEE_POINT}, t->GetTaskType());
-        };
-        if (IsFleeTask(tactive) || IsFleeTask(tsimplest)) {
-            return new CTaskComplexSmartFleeEntity{e->m_AimedBy, false, fSafeDistance}; // 0x4C28F5
+        if (tactive) { // Only the active task is checked
+            switch (tactive->GetTaskType()) {
+            case TASK_COMPLEX_FLEE_ENTITY:
+            case TASK_COMPLEX_FLEE_POINT:
+                return new CTaskComplexFleeEntity{ e->m_AimedBy, false }; // 0x4C28FF
+            case TASK_COMPLEX_SMART_FLEE_ENTITY:
+            case TASK_COMPLEX_SMART_FLEE_POINT:
+                return new CTaskComplexSmartFleeEntity{ e->m_AimedBy, false, fSafeDistance }; // 0x4C28F5
+            default:
+                break;
+            }
         }
 
         if (m_Ped->IsCreatedBy(PED_GAME) && !m_Ped->bInVehicle && !m_Ped->GetActiveWeapon().IsTypeMelee()) {
@@ -1381,6 +1387,8 @@ void CEventHandler::ComputeGunAimedAtResponse(CEventGunAimedAt* e, CTask* tactiv
         }
 
         switch (e->m_TaskId) {
+        case TASK_NONE: // 0x4C29A8
+            return nullptr;
         case TASK_COMPLEX_USE_CLOSEST_FREE_SCRIPTED_ATTRACTOR: // 0x4C2A7A
             return new CTaskComplexUseClosestFreeScriptedAttractor{};
         case TASK_COMPLEX_USE_CLOSEST_FREE_SCRIPTED_ATTRACTOR_RUN:
@@ -1391,9 +1399,9 @@ void CEventHandler::ComputeGunAimedAtResponse(CEventGunAimedAt* e, CTask* tactiv
             return new CTaskSimpleCower{};
         case TASK_SIMPLE_HANDS_UP:
             return new CTaskSimpleHandsUp{5'000};
-        case TASK_SIMPLE_DUCK: {
-            if (const auto t = m_Ped->GetIntelligence()->GetTaskDuck()) {
-                return t;
+        case TASK_SIMPLE_DUCK: { // 0x4C2A0D - No response if already ducking
+            if (m_Ped->GetIntelligence()->GetTaskDuck()) {
+                return nullptr;
             }
             return new CTaskSimpleDuck{DUCK_STANDALONE, 5'000};
         }
@@ -1403,8 +1411,15 @@ void CEventHandler::ComputeGunAimedAtResponse(CEventGunAimedAt* e, CTask* tactiv
             return new CTaskComplexReactToGunAimedAt{e->m_AimedBy}; 
         case TASK_COMPLEX_KILL_PED_ON_FOOT_STEALTH: // 0x4C2E30
             return new CTaskComplexKillPedOnFootStealth{e->m_AimedBy};
-        case TASK_COMPLEX_KILL_CRIMINAL:
-            return new CTaskComplexKillCriminal{e->m_AimedBy};
+        case TASK_COMPLEX_KILL_CRIMINAL: { // 0x4C2D7C
+            if (e->m_AimedBy->IsPlayer()) {
+                return nullptr;
+            }
+            if (IsKillTaskAppropriate(m_Ped, e->m_AimedBy, *e)) {
+                return new CTaskComplexKillCriminal{ e->m_AimedBy };
+            }
+            return new CTaskComplexFleeEntity{ e->m_AimedBy, false };
+        }
         case TASK_COMPLEX_KILL_PED_ON_FOOT: { // 0x4C2E3D
             if (IsKillTaskAppropriate(m_Ped, e->m_AimedBy, *e)) {
                 return new CTaskComplexKillPedOnFoot{e->m_AimedBy};
@@ -1420,7 +1435,7 @@ void CEventHandler::ComputeGunAimedAtResponse(CEventGunAimedAt* e, CTask* tactiv
                 }
             }
             if (!m_Ped->bWantedByPolice || !e->m_AimedBy->IsCop()) {
-                return new CTaskComplexFleeEntity{e->m_AimedBy, false};
+                return new CTaskComplexSmartFleeEntity{ e->m_AimedBy, false, fSafeDistance }; // 0x4C2CF7
             }
             return new CTaskComplexFleeAnyMeans{e->m_AimedBy, true, fSafeDistance};
         }
@@ -1428,7 +1443,7 @@ void CEventHandler::ComputeGunAimedAtResponse(CEventGunAimedAt* e, CTask* tactiv
             return new CTaskComplexFleeEntity{e->m_AimedBy, false};
         case TASK_COMPLEX_SMART_FLEE_ENTITY: { // 0x4C2B5C
             if (!m_Ped->bWantedByPolice || !e->m_AimedBy->IsCop()) {
-                return new CTaskComplexFleeEntity{e->m_AimedBy, false};
+                return new CTaskComplexSmartFleeEntity{ e->m_AimedBy, false, fSafeDistance };
             }
             return new CTaskComplexFleeAnyMeans{e->m_AimedBy, true, fSafeDistance};
         }
