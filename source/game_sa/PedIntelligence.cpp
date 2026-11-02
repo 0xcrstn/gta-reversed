@@ -53,6 +53,7 @@ void CPedIntelligence::InjectHooks()
     RH_ScopedInstall(RestorePedDecisionMakerType, 0x600BC0);
     RH_ScopedInstall(SetHearingRange, 0x600BE0);
     RH_ScopedInstall(SetSeeingRange, 0x600BF0);
+    RH_ScopedInstall(IsInHearingRange, 0x600C00);
     RH_ScopedInstall(IsInSeeingRange, 0x600C60);
     RH_ScopedInstall(FindRespectedFriendInInformRange, 0x600CF0);
     RH_ScopedInstall(IsRespondingToEvent, 0x600DB0);
@@ -89,10 +90,12 @@ void CPedIntelligence::InjectHooks()
     RH_ScopedInstall(FlushIntelligence, 0x601DA0);
     RH_ScopedInstall(TestForStealthKill, 0x601E00);
     RH_ScopedInstall(RecordEventForScript, 0x602050);
+    RH_ScopedInstall(HasInterestingEntites, 0x602080);
     RH_ScopedInstall(IsInterestingEntity, 0x6020A0);
     RH_ScopedInstall(LookAtInterestingEntities, 0x6020D0);
     RH_ScopedInstall(IsPedGoingForCarDoor, 0x602350);
     RH_ScopedInstall(CanSeeEntityWithLights, 0x605550);
+    RH_ScopedInstall(IncrementAngerAtPlayer, 0x421050);
     RH_ScopedInstall(ProcessStaticCounter, 0x605650);
     RH_ScopedInstall(ProcessFirst, 0x6073A0);
     RH_ScopedInstall(Process, 0x608260);
@@ -179,7 +182,7 @@ void CPedIntelligence::SetSeeingRange(float range) {
 // Unused
 // 0x600C00
 bool CPedIntelligence::IsInHearingRange(const CVector& posn) {
-    return plugin::CallMethodAndReturn<bool, 0x600C00, CPedIntelligence*, const CVector&>(this, posn);
+    return sq(m_fHearingRange) > CVector::DistSqr(posn, m_pPed->GetPosition());
 }
 
 // 0x600C60
@@ -758,7 +761,7 @@ void CPedIntelligence::RecordEventForScript(int32 eventId, int32 eventPriority) 
 // typo: Entities
 // 0x602080
 bool CPedIntelligence::HasInterestingEntites() {
-    return plugin::CallMethodAndReturn<bool, 0x602080, CPedIntelligence*>(this);
+    return rng::any_of(m_apInterestingEntities, notsa::NotIsNull{});
 }
 
 // 0x6020A0
