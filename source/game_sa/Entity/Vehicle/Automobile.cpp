@@ -1551,12 +1551,14 @@ void CAutomobile::ProcessSuspension() {
                 if (handlingFlags.bNpcNeutralHandl && GetStatus() == STATUS_PHYSICS) {
                     suspensionBias = 0.5f;
                 }
-                if (std::fabs(forwardSpeed) < 0.15f) {
-                    fSuspensionForceLevel *= 1.5f;
-                }
             }
 
-            if (ModelIndices::IsVortex(m_nModelIndex)) {
+            // 0x6AFFC1..0x6B000A: The Vortex multiplier isn't applied if the low speed hydraulics branch is taken
+            if (handlingFlags.bHydraulicInst && std::fabs(forwardSpeed) < 0.15f) {
+                if (handlingFlags.bHydraulicGeom) {
+                    fSuspensionForceLevel *= 1.5f;
+                }
+            } else if (ModelIndices::IsVortex(m_nModelIndex)) {
                 fSuspensionForceLevel *= std::fabs(AsPlane()->m_fAccelerationBreakStatus) * 0.25f + 1.0f;
             }
 
@@ -1597,7 +1599,7 @@ void CAutomobile::ProcessSuspension() {
             if (handlingFlags.bHydraulicInst && dampingForce > 0.1f && fabs(forwardSpeed) < 0.15f)
                 dampingForce = 0.1f;
 
-            if (springLength[i] < 1.0f && !autoFlags.bIsMonsterTruck)
+            if (springLength[i] < 0.99999f && !autoFlags.bIsMonsterTruck) { // 0x6B0241: Not 1.0f
                 ApplySpringDampening(
                     dampingForce,
                     wheelSpringForceDampingLimits[i],
@@ -1605,6 +1607,7 @@ void CAutomobile::ProcessSuspension() {
                     contactPoints[i],
                     contactSpeeds[i]
                 );
+            }
         }
 
         if (!ModelIndices::IsRhino(m_nModelIndex))
