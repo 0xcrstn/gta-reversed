@@ -843,7 +843,19 @@ CPed* CPopulation::AddPed(ePedType pedType, eModelID modelIndex, const CVector& 
             if (CCheat::IsActive(CHEAT_NINJA_THEME) && pedType == PED_TYPE_GANG7) {
                 GiveAndSetPedWeapon(ped, WEAPON_KATANA);
             } else if (CGeneral::RandomBool(33)) { // Give random weapon
-                if (const auto wtype = CGangs::Gang[GetGangOfPedType(pedType)].GetRandomWeapon(); wtype != WEAPON_UNARMED) {
+                // 0x61290C: Pick one of the 3 weapon slots (or of the first 2 if the 3rd is unarmed), unarmed slots included
+                const auto& weapons = CGangs::Gang[GetGangOfPedType(pedType)].m_nGangWeapons;
+                const auto  chance  = CGeneral::GetRandomNumberInRange(0, 100);
+                const auto  wtype   = [&] {
+                    if (weapons[2] != WEAPON_UNARMED) {
+                        if (chance < 33) {
+                            return weapons[0];
+                        }
+                        return chance < 66 ? weapons[1] : weapons[2];
+                    }
+                    return weapons[1] != WEAPON_UNARMED && chance >= 50 ? weapons[1] : weapons[0];
+                }();
+                if (wtype != WEAPON_UNARMED) {
                     GiveAndSetPedWeapon(ped, wtype);
                 }
             }
