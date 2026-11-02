@@ -761,7 +761,7 @@ void CPlayerPed::MakeChangesForNewWeapon(eWeaponType weaponType) {
 
 
     if (auto anim = RpAnimBlendClumpGetAssociation(GetRpClump(), ANIM_ID_FIRE))
-        anim->m_Flags |= ANIMATION_IS_PLAYING & ANIMATION_IS_FINISH_AUTO_REMOVE;
+        anim->m_Flags |= ANIMATION_IS_PLAYING | ANIMATION_IS_FINISH_AUTO_REMOVE;
 
     TheCamera.ClearPlayerWeaponMode();
 }
@@ -778,8 +778,8 @@ bool LOSBlockedBetweenPeds(CEntity* entity1, CEntity* entity2) {
     }
 
     const auto target = entity2->GetIsTypePed()
-        ? entity1->AsPed()->GetBonePosition(eBoneTag::BONE_NECK, false)
-        : entity1->GetPosition();
+        ? entity2->AsPed()->GetBonePosition(eBoneTag::BONE_NECK, false)
+        : entity2->GetPosition();
 
     CColPoint colPoint;
     CEntity* hitEntity;
