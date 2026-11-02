@@ -201,11 +201,11 @@ void CPad::Update(int32 pad) {
     iCurrHornHistory = (iCurrHornHistory + 1) % 5;
     bHornHistory[iCurrHornHistory] = GetHorn();
 
-    // Shift right by 1
-    std::rotate(
-        std::begin(SteeringLeftRightBuffer),
-        std::begin(SteeringLeftRightBuffer) + 1,
-        std::end(SteeringLeftRightBuffer)
+    // Shift right by 1, the latest sample stays at the front (0x541D2D)
+    rng::copy_backward(
+        SteeringLeftRightBuffer.begin(),
+        SteeringLeftRightBuffer.end() - 1,
+        SteeringLeftRightBuffer.end()
     );
 
     if (JustOutOfFrontEnd)
