@@ -47,7 +47,7 @@ float CAEAudioEnvironment::GetDistanceAttenuation(float dist) {
 // 0x4D7F60
 float CAEAudioEnvironment::GetDirectionalMikeAttenuation(const CVector& soundDir) {
     // https://en.wikipedia.org/wiki/Cutoff_frequency
-    static constexpr float CUT_OFF_FREQ = 0.70710678118F; // sqrt(0.5F);
+    static constexpr float CUT_OFF_FREQ       = 0.707F; // ~sqrt(0.5F), the original stores 0.707 (0x8AC258)
     static constexpr float ATTENUATION_FACTOR = -6.0F;
 
     // BUG? Seems weird that it uses just single axis,
