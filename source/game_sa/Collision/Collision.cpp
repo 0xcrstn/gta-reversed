@@ -414,7 +414,7 @@ float CCollision::DistToLineSqr(CVector const& ln0, CVector const& ln1, CVector 
     // (Result of the dot product)
     const auto bSq = pl * pl / ll;
 
-    return cSq - bSq; // return a^2
+    return std::max(cSq - bSq, 0.f); // return a^2 - It can be slightly negative due to rounding, the original clamps it
 }
 
 // 0x417610
