@@ -93,7 +93,7 @@ CTask* CTaskComplexCarDrive::CreateNextSubTask(CPed* ped) {
             CEntity::ChangeEntityReference(m_Veh, ped->m_pVehicle);
             return Create(TASK_SIMPLE_CAR_DRIVE);
         }
-        return m_DesiredCarModel == MODEL_INVALID
+        return m_DesiredCarModel < 0
             ? CreateSubTaskCannotGetInCar(ped)
             : Create(TASK_SIMPLE_CREATE_CAR_AND_GET_IN);
     }
@@ -104,8 +104,10 @@ CTask* CTaskComplexCarDrive::CreateNextSubTask(CPed* ped) {
         }
         return CreateSubTaskCannotGetInCar(ped);
     }
-    default:
-        NOTSA_UNREACHABLE();
+    case TASK_COMPLEX_GO_TO_POINT_ANY_MEANS: // Created by `CTaskComplexDriveToPoint::CreateSubTaskCannotGetInCar`
+        return Create(TASK_FINISHED);
+    default: // E.g.: The wander task created by `CTaskComplexCarDriveWander::CreateSubTaskCannotGetInCar`
+        return nullptr;
     }
 }
 
