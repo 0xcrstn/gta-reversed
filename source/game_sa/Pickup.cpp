@@ -583,14 +583,15 @@ bool CPickup::Update(CPlayerPed* player, CVehicle* vehicle, int32 playerId) {
                                     CHud::SetHelpMessage(gGxtString, false, false, false);
                                 }
                                 if (CollectPickupBuffer) {
-                                    const GxtChar* textToPrint = nullptr;
                                     if (CTheScripts::IsPlayerOnAMission()) {
-                                        textToPrint = TheText.Get("PROP_2");
+                                        CHud::SetHelpMessage(TheText.Get("PROP_2"), true, false, false);
                                     } else if (FindPlayerInfo().m_nMoney < (int32)m_nAmmo) {
-                                        textToPrint = TheText.Get("PROP_1");
+                                        CHud::SetHelpMessage(TheText.Get("PROP_1"), true, false, false);
+                                    } else { // 0x4581DE - Buy the property
+                                        FindPlayerInfo().m_nMoney -= (int32)m_nAmmo;
+                                        CHud::SetHelpMessage(nullptr, true, false, false);
+                                        SetRemoved();
                                     }
-
-                                    CHud::SetHelpMessage(textToPrint, true, false, false);
                                 }
                                 break;
                             case PICKUP_2P:
