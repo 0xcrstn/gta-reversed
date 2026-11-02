@@ -173,29 +173,25 @@ bool CHud::HelpMessageDisplayed() {
 
 // 0x588F60
 void CHud::SetMessage(const GxtChar* message) {
-    if (message) {
-        strncpy_s((char*)m_Message, sizeof(m_Message), AsciiFromGxtChar(message), sizeof(m_Message));
-    } else {
-        m_Message[0] = '\0';
-    }
+    CMessages::StringCopy(m_Message, message, sizeof(m_Message));
 }
 
-// little bit different from OG
 // 0x588FC0
 void CHud::SetBigMessage(GxtChar* message, eMessageStyle style) {
     if (BigMessageX[style] != 0.0f) {
         return;
     }
 
-    strncpy_s((char*)m_BigMessage[style], sizeof(m_BigMessage[style]), AsciiFromGxtChar(message), sizeof(m_BigMessage[style]));
+    CMessages::StringCopy(m_BigMessage[style], message, sizeof(m_BigMessage[style]));
 
     switch (style) {
     case STYLE_WHITE_MIDDLE_SMALLER: {
-        if (strcmp(AsciiFromGxtChar(message), AsciiFromGxtChar(LastBigMessage[STYLE_WHITE_MIDDLE_SMALLER])) != 0) {
+        // The original only compares as many characters as the new message has
+        if (!CMessages::StringCompare(message, LastBigMessage[style], (uint16)CMessages::GetStringLength(message))) {
             OddJob2OffTimer = 0.0f;
             OddJob2On = 0;
         }
-        strncpy_s((char*)LastBigMessage[style], sizeof(LastBigMessage[style]), AsciiFromGxtChar(message), sizeof(LastBigMessage[style]));
+        CMessages::StringCopy(LastBigMessage[style], message, sizeof(LastBigMessage[style]));
         break;
     }
     default: {
@@ -567,7 +563,7 @@ void CHud::DrawBustedWastedMessage() {
         return;
     }
 
-    messageAlpha += CTimer::GetTimeStepInMS() * 0.4f;
+    messageAlpha += (int32)CTimer::GetTimeStepInMS() * 0.4f;
     messageAlpha = std::min(messageAlpha, 255.0f);
 
     CFont::SetBackground(false, false);
@@ -826,7 +822,7 @@ void CHud::DrawCrossHairs() {
 
 // 0x58D580
 float CHud::DrawFadeState(DRAW_FADE_STATE fadingElement, int32 forceFadingIn) {
-    uint32 state, timer, fadeTimer;
+    int32 state, timer, fadeTimer;
     switch (fadingElement) {
     case WANTED_STATE:
         fadeTimer = m_WantedFadeTimer;
@@ -859,8 +855,8 @@ float CHud::DrawFadeState(DRAW_FADE_STATE fadingElement, int32 forceFadingIn) {
         switch (state) {
         case NAME_DONT_SHOW:
             fadeTimer = 0;
-            break;
-        case NAME_SWITCH:
+            [[fallthrough]];
+        case NAME_SHOW:
         case NAME_FADE_OUT:
             timer = 5;
             state = NAME_FADE_IN;
@@ -871,7 +867,7 @@ float CHud::DrawFadeState(DRAW_FADE_STATE fadingElement, int32 forceFadingIn) {
     }
 
     float alpha = 255.0f;
-    if (state != NAME_DONT_SHOW) {
+    if (state != NAME_DONT_SHOW && state != FADE_DISABLED) {
         switch (state) {
         case NAME_SHOW:
             fadeTimer = 1000;
@@ -881,7 +877,7 @@ float CHud::DrawFadeState(DRAW_FADE_STATE fadingElement, int32 forceFadingIn) {
             }
             break;
         case NAME_FADE_IN:
-            fadeTimer += (uint32)CTimer::GetTimeStepInMS();
+            fadeTimer += (int32)CTimer::GetTimeStepInMS();
             if (fadeTimer > 1000) {
                 state = NAME_SHOW;  
                 fadeTimer = 1000;
@@ -889,7 +885,7 @@ float CHud::DrawFadeState(DRAW_FADE_STATE fadingElement, int32 forceFadingIn) {
             alpha = float(fadeTimer) / 1000.0f * 255.0f;
             break;
         case NAME_FADE_OUT:
-            fadeTimer -= (uint32)CTimer::GetTimeStepInMS();
+            fadeTimer -= (int32)CTimer::GetTimeStepInMS();
             if (fadeTimer < 0) {
                 fadeTimer = 0;
                 state = NAME_DONT_SHOW;
@@ -899,7 +895,7 @@ float CHud::DrawFadeState(DRAW_FADE_STATE fadingElement, int32 forceFadingIn) {
         default:
             break;
         }
-        timer += (uint32)CTimer::GetTimeStepInMS();
+        timer += (int32)CTimer::GetTimeStepInMS();
     }
 
     switch (fadingElement) {
@@ -972,7 +968,7 @@ void CHud::DrawMissionTitle() {
         messageX += CTimer::GetTimeStep();
         if (messageX >= 120.0f) {
             messageX = 120.0f;
-            messageAlpha -= CTimer::GetTimeStepInMS();
+            messageAlpha -= (int32)CTimer::GetTimeStepInMS();
         }
         if (messageAlpha <= 0.0f) {
             messageAlpha = 0.0f;
@@ -981,7 +977,7 @@ void CHud::DrawMissionTitle() {
         }
     } else {
         messageAlpha = 255.0f;
-        messageInUse += CTimer::GetTimeStepInMS() * 0.3f;
+        messageInUse += (int32)CTimer::GetTimeStepInMS() * 0.3f;
     }
 
     CFont::SetEdge(2);
@@ -1044,7 +1040,7 @@ void CHud::DrawOddJobMessage(bool displayImmediately) {
     }
 
     if (OddJob2OffTimer > 0.0f) {
-        OddJob2OffTimer -= CTimer::GetTimeStepInMS();
+        OddJob2OffTimer -= (int32)CTimer::GetTimeStepInMS();
     }
 
     const auto& m5 = m_BigMessage[STYLE_WHITE_MIDDLE_SMALLER];
@@ -1127,17 +1123,16 @@ void CHud::DrawRadar() {
             SCREEN_STRETCH_X(87.0f),
             SCREEN_STRETCH_FROM_BOTTOM(66.0f),
             angle,
-            (uint32)SCREEN_STRETCH_X(78.0f),
-            (uint32)SCREEN_STRETCH_Y(59.0f),
+            (uint32)SCREEN_STRETCH_X(76.0f),
+            (uint32)SCREEN_STRETCH_Y(58.0f),
             CRGBA(255, 255, 255, 255)
         );
     }
 
     CPlayerPed* player = FindPlayerPed();
-    // Draws Altimeter on Planes And Helis or when parachuting down
-    if (vehicle && (vehicle->IsSubPlane() || vehicle->IsSubHeli() && vehicle->m_nModelIndex != MODEL_VORTEX)
-        || player->GetActiveWeapon().m_Type == WEAPON_PARACHUTE
-    ) {
+    // Draws Altimeter on Planes And Helis (except the Vortex) or when parachuting down
+    if (vehicle && (vehicle->IsSubPlane() || vehicle->IsSubHeli()) && vehicle->m_nModelIndex != MODEL_VORTEX
+        || player->GetActiveWeapon().m_Type == WEAPON_PARACHUTE) {
         rect.left   = SCREEN_STRETCH_X(40.0f) - SCREEN_STRETCH_X(20.0f);
         rect.bottom    = SCREEN_STRETCH_FROM_BOTTOM(104.0f);
         rect.right  = SCREEN_STRETCH_X(40.0f) - SCREEN_STRETCH_X(10.0f);
@@ -1378,12 +1373,8 @@ void CHud::GetRidOfAllHudMessages(bool arg0) {
         if (BigMessageX[i] != 0.0f)
             continue;
 
-        if (arg0) {
-            if (BigMessageX[i] == BigMessageX[STYLE_BOTTOM_RIGHT] ||
-                BigMessageX[i] == BigMessageX[STYLE_MIDDLE_SMALLER_HIGHER]
-            ) {
-                continue;
-            }
+        if (arg0 && (i == STYLE_BOTTOM_RIGHT || i == STYLE_MIDDLE_SMALLER_HIGHER)) {
+            continue;
         }
         std::ranges::fill(m_BigMessage[i], '\0');
     }
@@ -1427,7 +1418,7 @@ void CHud::DrawAmmo(CPed* ped, int32 x, int32 y, float alpha) {
     CFont::SetBackground(false, false);
     CFont::SetScale(SCREEN_STRETCH_X(0.3f), SCREEN_STRETCH_Y(0.7f));
     CFont::SetOrientation(eFontAlignment::ALIGN_CENTER);
-    CFont::SetCentreSize(SCREEN_STRETCH_Y(640.0f));
+    CFont::SetCentreSize(SCREEN_STRETCH_X(640.0f));
     CFont::SetProportional(true);
     CFont::SetEdge(1);
     CFont::SetDropColor({ 0, 0, 0, 255 });
@@ -1578,8 +1569,9 @@ void CHud::DrawWeaponIcon(CPed* ped, int32 x, int32 y, float alpha) {
 
     auto mi = CModelInfo::GetModelInfo(modelId);
     auto txd = CTxdStore::ms_pTxdPool->GetAt(mi->m_nTxdIndex);
-    if (!txd)
+    if (!txd || !txd->m_pRwDictionary) { // The original only checks the dictionary, which is null until the TXD is loaded
         return;
+    }
 
     auto texture = RwTexDictionaryFindHashNamedTexture(txd->m_pRwDictionary, CKeyGen::AppendStringToKey(mi->m_nKey, "ICON"));
     if (!texture)
