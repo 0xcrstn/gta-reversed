@@ -91,7 +91,7 @@ void CAESmoothFadeThread::Service() {
         if (elapsed < entry.m_wFadeTime) {
             const auto fStep = pow(10.0F, entry.m_fVolumeDiff / 20.0F) - 1.0F;
             const auto fProgress = static_cast<float>(elapsed) / static_cast<float>(entry.m_wFadeTime);
-            entry.m_fCurVolume = entry.m_fStartVolume + LOG10_2 * log2(fStep * fProgress) * 20.0F;
+            entry.m_fCurVolume   = entry.m_fStartVolume + LOG10_2 * log2(fStep * fProgress + 1.0F) * 20.0F; // 0x4EEE22
 
             const auto dwVolume = static_cast<LONG>(entry.m_fCurVolume * 100.0F);
             entry.m_pSoundBuffer->SetVolume(dwVolume);
