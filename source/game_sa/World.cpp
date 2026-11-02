@@ -1027,7 +1027,8 @@ void CWorld::FindObjectsIntersectingCubeSectorList(PtrListType& ptrList, const C
 
         entity->SetCurrentScanCode();
 
-        const float fBoundRadius = entity->GetColModel()->GetBoundRadius();
+        // The original uses the model's col model, not `CEntity::GetColModel` (so vehicles' special col models are ignored)
+        const float   fBoundRadius = CModelInfo::GetModelInfo(entity->m_nModelIndex)->GetColModel()->GetBoundRadius();
         const CVector pos = entity->GetPosition();
 
         // TODO:
@@ -1061,7 +1062,7 @@ void CWorld::FindObjectsIntersectingAngledCollisionBoxSectorList(PtrListType& pt
 
         CColSphere sphere{
             transform.InverseTransformVector(entity->GetPosition() - point),
-            entity->GetColModel()->GetBoundRadius()
+            CModelInfo::GetModelInfo(entity->m_nModelIndex)->GetColModel()->GetBoundRadius() // The model's col model, not `CEntity::GetColModel`
         };
         if (CCollision::TestSphereBox(sphere, box)) {
             if (*outCount < maxCount) {
@@ -1079,8 +1080,6 @@ void CWorld::FindObjectsIntersectingAngledCollisionBoxSectorList(PtrListType& pt
 // Also, seems like namespaces weren't a thing in C++03.. Well, at least to R*.
 template<typename PtrListType>
 void CWorld::FindMissionEntitiesIntersectingCubeSectorList(PtrListType& ptrList, const CVector& cornerA, const CVector& cornerB, int16* outCount, int16 maxCount, CEntity** outEntities, bool vehiclesList, bool pedsList, bool objectsList) {
-    // NOTSA - Easier to do it this way..
-    const CBoundingBox bb{ cornerA, cornerB };
     for (auto* const entity : ptrList) {
         if (entity->IsScanCodeCurrent()) {
             continue;
@@ -1106,13 +1105,18 @@ void CWorld::FindMissionEntitiesIntersectingCubeSectorList(PtrListType& ptrList,
             }
         }
 
-        if (bb.IsPointWithin(entity->GetPosition())) {
+        // The original tests the model's bounding sphere against the box, not just the position
+        const float   radius = CModelInfo::GetModelInfo(entity->m_nModelIndex)->GetColModel()->GetBoundRadius();
+        const CVector pos    = entity->GetPosition();
+        if (pos.x + radius >= cornerA.x && pos.x - radius <= cornerB.x
+            && pos.y + radius >= cornerA.y && pos.y - radius <= cornerB.y
+            && pos.z + radius >= cornerA.z && pos.z - radius <= cornerB.z) {
+            /* Don't stop if reached max count, because of entity scan code update */
             if (*outCount < maxCount) {
                 if (outEntities) {
-                    outEntities[*outCount++] = entity;
+                    outEntities[*outCount] = entity;
                 }
-            } else {
-                break; // NOTSA - But makes sense lol
+                ++*outCount;
             }
         }
     }
@@ -1139,7 +1143,9 @@ void CWorld::FindNearestObjectOfTypeSectorList(int32 modelId, PtrListType& ptrLi
             return DistanceBetweenPoints(entity->GetPosition(), point);
         };
 
-        if (const float dist = GetDistance(); dist <= radius) {
+        // The original compares against `outNearestDist` (which the caller initialises to `radius`), not `radius`,
+        // so the nearest entity is found (instead of the last one in range)
+        if (const float dist = GetDistance(); dist < outNearestDist) {
             outNearestDist = dist;
             outNearestEntity = entity;
         }
