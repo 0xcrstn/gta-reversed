@@ -279,6 +279,7 @@ private:
     void CheckAndReset(eControllerAction action, eControllerType type, KeyCode button, int16& state);
     void CheckAndSetPad(eControllerAction action, eControllerType type, KeyCode button, int16& primaryState, int16& secondaryState);
     void CheckAndSetStick(eControllerAction action, eControllerType type, KeyCode button, int16& state, bool& movementBothDown, int16 value);
+    void CheckAndSetLeftStick(eControllerAction action, eControllerType type, KeyCode button, int16& state, bool movementBothDown, int16 value);
 
     bool UseDrivingControls();
     bool UseFirstPersonControls();
