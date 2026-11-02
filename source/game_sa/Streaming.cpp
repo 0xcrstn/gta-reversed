@@ -3543,7 +3543,7 @@ void CStreaming::StreamZoneModels(const CVector& unused) {
             }
         }
 
-        timeBeforeNextLoad = 300;
+        timeBeforeNextLoad = 299; // 0x40A655..0x40A65B: The original sets 300, and decrements it right away
     }
 
     static auto& timeBeforeNextGangLoad = StaticRef<int32>(0x9654D0); // 0
