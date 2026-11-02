@@ -26,11 +26,8 @@ CEventLeanOnVehicle::~CEventLeanOnVehicle() {
 
 // 0x4B16C0
 bool CEventLeanOnVehicle::IsValid(CPed* ped) {
-    if (ped)
+    if (ped) {
         return ped->IsAlive();
-
-    if (IsValid(ped))
-        return true;
-
-    return false;
+    }
+    return CEvent::IsValid(ped);
 }
