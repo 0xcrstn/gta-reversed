@@ -359,6 +359,7 @@ void CTheZones::Update() {
             if (!CTheScripts::bPlayerIsOffTheMap && CGame::CanSeeOutSideFromCurrArea() && SetZoneWasVisited(pos, true)) {
                 CTheZones::ZonesRevealed++;
             }
+            CountSeconds = CTimer::GetTimeInMS(); // 0x572D59
         }
     } else {
         CountSeconds = CTimer::GetTimeInMS();
