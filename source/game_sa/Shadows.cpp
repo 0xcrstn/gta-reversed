@@ -759,12 +759,7 @@ void CShadows::CastRealTimeShadowSectorList(PtrListType& ptrList, float conrerAX
 
 // 0x70A960
 void CShadows::RenderStoredShadows() {
-    // Originally renderstates are still set even though there are no shadows to be rendered
-    // I don't think this is necessary, so we early-out here
-    if (!CShadows::ShadowsStoredToBeRendered) {
-        return;
-    }
-
+    // NOTE: Render states are set (and restored at the end) even if there are no shadows to be rendered
     RenderBuffer::ClearRenderBuffer();
 
     for (auto i = 0; i < ShadowsStoredToBeRendered; i++) {
@@ -781,9 +776,10 @@ void CShadows::RenderStoredShadows() {
     RwRenderStateSet(rwRENDERSTATETEXTUREFILTER,        RWRSTATE(rwFILTERLINEAR));
 
     const auto GetShadowRect = [](CRegisteredShadow& shdw) {
+        const auto extent = abs(shdw.m_Side) + abs(shdw.m_Front); // Front and side are half sizes, the shadow is centered on its position
         return CRect{
-            shdw.m_vecPosn,
-            shdw.m_vecPosn + abs(shdw.m_Side) + abs(shdw.m_Front)
+            CVector2D{ shdw.m_vecPosn } - extent,
+            CVector2D{ shdw.m_vecPosn } + extent
         };
     };
 
@@ -914,9 +910,9 @@ void CShadows::RenderStoredShadows() {
             // Iterate shadow sectors (Using `CWorld::IterateSectors` for convenience)
             CWorld::IterateSectors(
                 (int32)(std::floor(oshdwRect.left / (float)STEP_SIZE)),
-                (int32)(std::floor(oshdwRect.top / (float)STEP_SIZE)),
+                (int32)(std::floor(oshdwRect.bottom / (float)STEP_SIZE)),
                 (int32)(std::ceil(oshdwRect.right / (float)STEP_SIZE)),
-                (int32)(std::ceil(oshdwRect.bottom / (float)STEP_SIZE)),
+                (int32)(std::ceil(oshdwRect.top / (float)STEP_SIZE)),
                 [&](int32 ox, int32 oy) {
                     // 0x70B000 - 0x70B0DA: Start storing 
                     RwIm3DVertex* vtxIt{};
@@ -941,7 +937,7 @@ void CShadows::RenderStoredShadows() {
                             return (currPosToShdw.Dot(v) / vmagsq + 1.f) * 0.5f;
                         };
                         RwIm3DVertexSetU(vtxIt, CalcTexCoord(oshdw.m_Side, shdwSideMagSq));
-                        RwIm3DVertexSetV(vtxIt, CalcTexCoord(oshdw.m_Front, shdwFrontMagSq));
+                        RwIm3DVertexSetV(vtxIt, 1.f - CalcTexCoord(oshdw.m_Front, shdwFrontMagSq));
 
                         // Set position
                         RwIm3DVertexSetPos(
@@ -950,6 +946,9 @@ void CShadows::RenderStoredShadows() {
                             currPos.y,
                             CWaterLevel::CalculateWavesOnlyForCoordinate2_Direct(x, y, waterLevelZ, bigWavesZ, smallWavesZ) + 0.06f // Z pos of the wave at the given coord
                         );
+
+                        // Onto the next vertex
+                        ++vtxIt;
                     };
 
                     // Process 4 vertices of this square
