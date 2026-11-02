@@ -1002,7 +1002,7 @@ bool CPhysical::ApplyCollision(CEntity* entity, const CColPoint& colPoint, float
             CVector vecCentreOfMassMultiplied = GetMatrix().TransformVector(m_vecCentreOfMass);
             CVector vecDifference = vecDistanceToPoint - vecCentreOfMassMultiplied;
             CVector vecSpeedCrossProduct = CrossProduct(vecDifference, vecMoveDirection);
-            float fSquaredMagnitude = vecMoveDirection.SquaredMagnitude();
+            float   fSquaredMagnitude         = vecSpeedCrossProduct.SquaredMagnitude();
             float fCollisionMass = 1.0f / (fSquaredMagnitude / m_fTurnMass + 1.0f / m_fMass);
 
             damageIntensity = -((m_fElasticity + 1.0f) * fCollisionMass * fSpeedDotProduct);
@@ -1072,7 +1072,7 @@ bool CPhysical::ApplySoftCollision(CEntity* entity, const CColPoint& colPoint, f
 
     CVector vecDifference = vecDistanceToPointFromThis - vecCentreOfMassMultiplied;
     CVector vecSpeedCrossProduct = CrossProduct(vecDifference, vecMoveDirection);
-    float fSquaredMagnitude = vecMoveDirection.SquaredMagnitude();
+    float   fSquaredMagnitude    = vecSpeedCrossProduct.SquaredMagnitude();
     float fCollisionMass = 1.0f / (fSquaredMagnitude / m_fTurnMass + 1.0f / m_fMass);
 
     if (!GetIsTypeVehicle() || vehicle->m_nVehicleSubType // todo: m_nVehicleSubType
