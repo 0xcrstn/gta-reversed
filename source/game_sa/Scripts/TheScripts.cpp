@@ -566,18 +566,19 @@ void CTheScripts::CleanUpThisObject(CObject* obj) {
 // 0x486300
 // TODO: test
 void CTheScripts::CleanUpThisPed(CPed* ped) {
-    if (!ped || ped->IsCreatedByMission()) {
+    if (!ped || !ped->IsCreatedByMission()) {
         return;
     }
 
     ped->SetCharCreatedBy(ePedCreatedBy::PED_GAME);
-    if (ped->bKeepTasksAfterCleanUp) {
-        return;
-    }
 
     notsa::ScopeGuard _([]() {
         --CPopulation::ms_nTotalMissionPeds;
     });
+
+    if (ped->bKeepTasksAfterCleanUp) {
+        return;
+    }
 
     if (auto* veh = ped->GetVehicleIfInOne(); veh && veh->IsDriver(ped)) {
         const auto FixMission = [veh](eCarMission fix) {
@@ -587,7 +588,7 @@ void CTheScripts::CleanUpThisPed(CPed* ped) {
             }
         };
 
-        switch (veh->GetType()) {
+        switch (veh->m_nVehicleSubType) {
         case eVehicleType::VEHICLE_TYPE_HELI: {
             FixMission(MISSION_HELI_FLYTOCOORS);
 
@@ -605,7 +606,7 @@ void CTheScripts::CleanUpThisPed(CPed* ped) {
             break;
         }
         default:
-            if (veh->IsSubAutomobile() || veh->IsSubBike()) {
+            if (veh->IsAutomobile() || veh->IsBike()) {
                 CCarCtrl::JoinCarWithRoadSystem(veh);
                 FixMission(MISSION_CRUISE);
             }
