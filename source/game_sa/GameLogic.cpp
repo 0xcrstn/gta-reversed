@@ -55,13 +55,16 @@ float CGameLogic::CalcDistanceToForbiddenTrainCrossing(CVector point, CVector mo
         }
     };
 
+    // NOTE: Not `else if`s, the LS-LV crossing is forbidden as long as LV is locked
     const auto cityUnlocked = CStats::GetStatValue(STAT_CITY_UNLOCKED);
     if (cityUnlocked == 0.0f) {
         Calculate({ 82.0f, -1021.0f }); // LS-SF; Flint Country
-    } else if (cityUnlocked == 1.0f) {
+    }
+    if (cityUnlocked == 1.0f) {
         Calculate({ -1568.0f, 537.0f }); // SF-LV; Downtown
-    } else if (cityUnlocked < 1.0f) {
-        Calculate({ 2270.0f, 277.0f }); // Not a train crossing; top left side of Palomino Creek, LS
+    }
+    if (cityUnlocked <= 1.0f) {
+        Calculate({ 2770.0f, 277.0f }); // LS-LV; Red County
     }
 
     return closest;
@@ -203,13 +206,16 @@ bool CGameLogic::IsPlayerUse2PlayerControls(CPed* ped) {
 
 // 0x4416E0
 bool CGameLogic::IsPointWithinLineArea(const CVector* points, uint32 numPoints, float x, float y) {
+    // The point is inside if a line from it (towards +X) crosses an odd number of edges (0x44175F)
+    auto numCrossings = 0u;
     for (auto&& [i, point] : rngv::enumerate(std::span{points, numPoints})) {
         const auto nextPoint = (i != numPoints - 1) ? points[i + 1] : points[0];
-        if (CCollision::Test2DLineAgainst2DLine(x, y, 1'000'000.0f, 0.0f, point.x, point.y, nextPoint.x - point.x, nextPoint.y - point.y))
-            return true;
+        if (CCollision::Test2DLineAgainst2DLine(x, y, 1'000'000.0f, 0.0f, point.x, point.y, nextPoint.x - point.x, nextPoint.y - point.y)) {
+            numCrossings++;
+        }
     }
 
-    return false;
+    return numCrossings % 2 != 0;
 }
 
 // 0x4416C0
