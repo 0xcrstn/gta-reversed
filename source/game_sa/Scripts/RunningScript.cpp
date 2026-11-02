@@ -579,7 +579,8 @@ void CRunningScript::CollectParameters(int16 count) {
     uint16 arrVarOffset;
     int32  arrElemIdx;
 
-    for (auto i = 0; i < count; i++) {
+    assert((uint16)count <= ScriptParams.size());
+    for (auto i = 0u; i < (uint16)count; i++) { // The original reads `count` as unsigned
         switch (CTheScripts::Read1ByteFromScript(m_IP)) {
         case SCRIPT_PARAM_STATIC_INT_32BITS:
             ScriptParams[i].iParam = CTheScripts::Read4BytesFromScript(m_IP);
