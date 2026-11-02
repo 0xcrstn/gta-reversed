@@ -49,6 +49,13 @@ inline const ReversibleBugFix AnimBlendSequence_SetName_SetBoneTagFlag{
     .Description = "Correctly set BoneTag flag in `CAnimBlendSequence::SetName`",
     .Credit      = "Pirulax"
 };
+inline const ReversibleBugFix CCollision_ProcessLineBox_UninitializedPoint{
+    .Name        = "CCollision::ProcessLineBox - Uninitialized collision point",
+    .Description = "With a `maxTouchDistance` above 1 the original reports a collision even if the line doesn't hit any of the box's faces, "
+                   "with the point and normal read from uninitialized memory. The fix reports no collision instead "
+                   "(With the fix disabled the collision is reported with a zero point and normal)",
+    .Credit      = "Contributors"
+};
 inline const ReversibleBugFix AESound_UpdatePlayTime_DivisionByZero{
     .Name        = "UpdatePlayTime Division-By-Zero",
     .Description = "Avoid Division-by-zero in CAESound::UpdatePlayTime",
