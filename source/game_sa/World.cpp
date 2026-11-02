@@ -503,7 +503,8 @@ void CWorld::CallOffChaseForAreaSectorListVehicles(CPtrListDoubleLink<CVehicle*>
 
         const auto& pos = veh->GetPosition();
 
-        if (!IsPointWithinBounds2D({ minX, minY }, { maxX, maxY }, pos)) {
+        // The original uses strict comparisons here
+        if (!(pos.x > minX && pos.x < maxX && pos.y > minY && pos.y < maxY)) {
             continue;
         }
 
@@ -527,16 +528,17 @@ void CWorld::CallOffChaseForAreaSectorListVehicles(CPtrListDoubleLink<CVehicle*>
         veh->m_autoPilot.SetTempAction(TEMPACT_WAIT, 2'000);
         
         const auto colData = veh->GetColModel()->m_pColData;
-        if (!colData || !colData->m_nNumSpheres) {
+        assert(colData); // The original doesn't check it
+        if (!colData->m_nNumSpheres) {
             continue;
         }
 
         // Checking the intersection of spheres with the region
         const auto& mat = veh->GetMatrix();
-        const auto spheresIntersect = std::ranges::any_of(
+        const auto  spheresIntersect = std::ranges::any_of(
             std::span(colData->m_pSpheres, colData->m_nNumSpheres),
             [&](const CColSphere& sphere) {
-                const auto spherePos = mat.TransformVector(sphere.m_vecCenter);
+                const auto spherePos = mat.TransformPoint(sphere.m_vecCenter);
                 const auto radius = sphere.m_fRadius;
                 
                 return (spherePos.x + radius > x1 && spherePos.x - radius < x2) &&
