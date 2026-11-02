@@ -42,17 +42,17 @@ void CCredits::PrintCreditText(float scaleX, float scaleY, const GxtChar* text, 
     if (pos > minPosY && pos < SCREEN_HEIGHT - minPosY) {
         CFont::SetScale(scaleX, scaleY);
         CFont::SetColor({0, 0, 0, 255});
-        CFont::PrintString((SCREEN_WIDTH / 2.0f), pos, text);
+        CFont::PrintString((float)(RsGlobal.maximumWidth / 2), pos, text);
 
         if (highlighted)
             CFont::SetColor({255, 255, 255, 255});
         else
             CFont::SetColor({210, 210, 210, 210});
 
-        CFont::PrintString((SCREEN_WIDTH / 2.0f - 1), pos - 1.0f, text);
+        CFont::PrintString((float)(RsGlobal.maximumWidth / 2 - 1), pos - 1.0f, text);
     }
 
-    position += (uint32)scaleY * minPosY;
+    position += (uint32)(scaleY * minPosY);
 }
 
 // 0x5A87C0
@@ -80,7 +80,7 @@ void CCredits::RenderCredits() {
     CFont::SetProportional(true);
     CFont::SetFontStyle(eFontStyle::FONT_SUBTITLES);
     CFont::SetEdge(0);
-    CFont::SetDropColor(CRGBA(0, 0, 255));
+    CFont::SetDropColor(CRGBA(0, 0, 0, 255));
 
     const auto PrintCreditText_ = [&](const char* textKey, float scale, bool highlighted = false) {
         auto text = TheText.Get(textKey);
