@@ -26,7 +26,10 @@ public:
     CTaskSimpleAffectSecondaryBehaviour(bool add, eSecondaryTask secondaryTaskType, CTask* task);
     CTaskSimpleAffectSecondaryBehaviour(const CTaskSimpleAffectSecondaryBehaviour&); // NOTSA
 
-    CTask*    Clone() const override { return new CTaskSimpleAffectSecondaryBehaviour(*this); }
+    CTask* Clone() const override { // 0x692910 - The inner task is cloned before this one is allocated
+        auto* const task = m_task ? m_task->Clone() : nullptr;
+        return new CTaskSimpleAffectSecondaryBehaviour{ m_bAdd, m_secTaskType, task };
+    }
     eTaskType GetTaskType() const override { return Type; }
     bool      MakeAbortable(CPed* ped, eAbortPriority priority = ABORT_PRIORITY_URGENT, const CEvent* event = nullptr) override { return false; }
     bool      ProcessPed(CPed* ped) override;
