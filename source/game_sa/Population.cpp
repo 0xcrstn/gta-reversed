@@ -312,7 +312,6 @@ bool CPopulation::ArePedStatsCompatible(ePedStats st1, ePedStats st2) {
         case ePedStats::GANG7:
             return false;
         }
-        return true;
     }
     const auto IsOldGuyOrGirl = [](ePedStats st) {
         switch (st) {
@@ -1070,14 +1069,16 @@ void CPopulation::ChooseCivilianCoupleOccupations(eModelID& husbandOccupation, e
   //      if ((wifeyOccupation = ChooseCivilianOccupation(false, wifeMustBeFemale)) != MODEL_INVALID) {
 //#else
     if ((husbandOccupation = ChooseCivilianOccupation(husbandMustBeMale, wifeMustBeFemale)) != MODEL_INVALID) {
-        if ((wifeyOccupation = ChooseCivilianOccupation(wifeMustBeFemale, husbandMustBeMale)) != MODEL_INVALID) {
-//#endif // FIX_BUGS
+        // 0x613204 - The wife can't have the husband's model, and her stat must be compatible with his
+        const auto husbandStat = CModelInfo::GetPedModelInfo(husbandOccupation)->GetPedStatType();
+        if ((wifeyOccupation = ChooseCivilianOccupation(wifeMustBeFemale, husbandMustBeMale, ANIM_GROUP_NONE, husbandOccupation, husbandStat)) != MODEL_INVALID) {
+            //#endif // FIX_BUGS
             const auto IsSkater = [](eModelID model) {
                 return CModelInfo::GetPedModelInfo(model)->GetPedStatType() == ePedStats::SKATER;
             };
             if (IsSkater(husbandOccupation) == IsSkater(wifeyOccupation)) { // Either they are both skaters, or they both aren't
                 return; // All good
-            }       
+            }
         }
     }
 
