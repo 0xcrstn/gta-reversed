@@ -588,15 +588,15 @@ void CEntryExit::WarpGangWithPlayer(CPlayerPed* player) {
         }
         const auto& memPos = mem->GetPosition();
 
-        // Find position to teleport member to
-        // Original code tried only twice, but we'll try all offsets
-        // (Probably won't make a lot of difference)
+        // Find position (around the player) to teleport member to
+        // 0x43F267: At most 3 offsets are tried, if none of them is valid no more members are teleported
         CVector memTeleportTo;
+        auto    numTries = 0;
         do {
-            if (offsetIdx >= offsets.size()) {
-                return; // No more offsets
+            if (offsetIdx >= offsets.size() || numTries++ >= 3) {
+                return; // No more offsets or tries
             }
-            memTeleportTo = memPos + CVector{ offsets[offsetIdx++], 0.f };
+            memTeleportTo = plyrPos + CVector{ offsets[offsetIdx++], 0.f };
         } while (!IsTeleportPointValid(plyrPos, memTeleportTo));
 
         // Calculate member heading (So that they'll face the player)
