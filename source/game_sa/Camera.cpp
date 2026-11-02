@@ -620,6 +620,9 @@ void CCamera::RestoreWithJumpCut() {
     m_bUseNearClipScript = false;
     m_nModeObbeCamIsInForCar = 30;
     m_bScriptParametersSetForInterp = false;
+    m_bCameraJustRestored              = true;
+    m_bEnable1rstPersonCamCntrlsScript = false;
+    m_bAllow1rstPersonWeaponsCamera    = false;
 
     CVehicle* vehicle = FindPlayerVehicle();
     CPlayerPed* player = FindPlayerPed();
@@ -736,7 +739,7 @@ void CCamera::SetCameraDirectlyBehindForFollowPed_ForAPed_CamOnAString(CPed* tar
 
     TheCamera.m_pTargetEntity = targetPed;
     CEntity::ChangeEntityReference(GetActiveCamera().m_pCamTargetEntity, targetPed);
-    m_fPedOrientForBehindOrInFront = targetPed->GetHeading();
+    m_fPedOrientForBehindOrInFront = CGeneral::GetATanOfXY(targetPed->GetForward().x, targetPed->GetForward().y);
 }
 
 // 0x50BE30
@@ -864,14 +867,17 @@ void CCamera::SetWideScreenOff() {
 // 0x50C160
 void CCamera::SetZoomValueFollowPedScript(int16 zoomMode) {
     switch (zoomMode) {
+    case 0:
+        m_fPedZoomValueScript = 0.25f;
+        break;
     case 1:
         m_fPedZoomValueScript = 1.50f;
         break;
     case 2:
         m_fPedZoomValueScript = 2.90f;
         break;
-    default:
-        m_fPedZoomValueScript = 0.25f;
+    default: // The original leaves the value unchanged, but still enables it
+        break;
     }
     m_bUseScriptZoomValuePed = true;
 }
@@ -1206,7 +1212,7 @@ void CCamera::CameraVehicleModeSpecialCases(CVehicle* vehicle) {
     float speed = vehicle->m_vecMoveSpeed.Magnitude();
 
     const auto slow = speed <= 0.2f;
-    CCollision::relVelCamCollisionVehiclesSqr = slow ? 0.1f : 1.0f;
+    CCollision::relVelCamCollisionVehiclesSqr = slow ? 0.01f : 1.0f;
     CCollision::bCamCollideWithVehicles = true;
     CCollision::bCamCollideWithPeds     = slow;
     CCollision::bCamCollideWithObjects  = slow;
@@ -1221,7 +1227,7 @@ bool CCamera::IsExtraEntityToIgnore(CEntity* entity) {
     if (m_nExtraEntitiesCount <= 0) {
         return false;
     }
-    return notsa::contains(m_pExtraEntity, entity);
+    return notsa::contains(std::span{ m_pExtraEntity, (size_t)m_nExtraEntitiesCount }, entity);
 }
 
 // 0x420C40
