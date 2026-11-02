@@ -3183,27 +3183,23 @@ void CStreaming::StreamOneNewCar() {
 
     bool bCheatActive = false;
     int32 carGroupId = 0;
+    // 0x40B500..0x40B5A0: The first active traffic cheat wins
     if (CCheat::IsActive(CHEAT_BEACH_PARTY)) {
         carGroupId = POPCYCLE_CARGROUP_BEACHFOLK;
         bCheatActive = true;
-    }
-    if (CCheat::IsActive(CHEAT_COUNTRY_TRAFFIC)) {
+    } else if (CCheat::IsActive(CHEAT_COUNTRY_TRAFFIC)) {
         carGroupId = POPCYCLE_CARGROUP_FARMERS;
         bCheatActive = true;
-    }
-    if (CCheat::IsActive(CHEAT_CHEAP_TRAFFIC)) {
+    } else if (CCheat::IsActive(CHEAT_CHEAP_TRAFFIC)) {
         carGroupId = POPCYCLE_CARGROUP_CHEAT1;
         bCheatActive = true;
-    }
-    if (CCheat::IsActive(CHEAT_FAST_TRAFFIC)) {
+    } else if (CCheat::IsActive(CHEAT_FAST_TRAFFIC)) {
         carGroupId = POPCYCLE_CARGROUP_CHEAT2;
         bCheatActive = true;
-    }
-    if (CCheat::IsActive(CHEAT_NINJA_THEME)) {
+    } else if (CCheat::IsActive(CHEAT_NINJA_THEME)) {
         carGroupId = POPCYCLE_CARGROUP_CHEAT3;
         bCheatActive = true;
-    }
-    if (CCheat::IsActive(CHEAT_FUNHOUSE_THEME)) {
+    } else if (CCheat::IsActive(CHEAT_FUNHOUSE_THEME)) {
         carGroupId = POPCYCLE_CARGROUP_CHEAT4;
         bCheatActive = true;
     }
@@ -3238,7 +3234,10 @@ void CStreaming::StreamOneNewCar() {
     ) {
         static auto& lastCarModelStreamedIn = StaticRef<int32>(0x965528); // 0
         if (lastCarModelStreamedIn == MODEL_TAXI) {
-            if (!IsCarModelNeededInCurrentZone(MODEL_CABBIE) && IsCarModelNeededInCurrentZone(MODEL_TAXI)) {
+            if (IsCarModelNeededInCurrentZone(MODEL_CABBIE)) {
+                carModelId             = MODEL_CABBIE;
+                lastCarModelStreamedIn = MODEL_CABBIE;
+            } else if (IsCarModelNeededInCurrentZone(MODEL_TAXI)) {
                 carModelId = MODEL_TAXI;
                 lastCarModelStreamedIn = MODEL_TAXI;
             }
