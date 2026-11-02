@@ -7,6 +7,8 @@ void CTaskComplexUseSequence::InjectHooks() {
     RH_ScopedCategory("Tasks");
 
     RH_ScopedInstall(Constructor, 0x635450);
+    RH_ScopedInstall(Destructor, 0x6396C0);
+    RH_ScopedVMTInstall(GetTaskType, 0x635490);
     RH_ScopedVMTInstall(Clone, 0x637100);
     RH_ScopedVMTInstall(MakeAbortable, 0x639730);
     RH_ScopedVMTInstall(CreateNextSubTask, 0x6354A0);
@@ -29,6 +31,7 @@ CTaskComplexUseSequence::CTaskComplexUseSequence(const CTaskComplexUseSequence& 
     m_nEndTaskIndex     = o.m_nEndTaskIndex;
 }
 
+// 0x6396C0
 CTaskComplexUseSequence::~CTaskComplexUseSequence() {
     if (m_nSequenceIndex != -1) {
         auto complexSequence = &CTaskSequences::ms_taskSequence[m_nSequenceIndex];
