@@ -79,7 +79,7 @@ bool CTaskSimplePickUpBike::MakeAbortable(CPed* ped, eAbortPriority priority, CE
 
 // 0x64D910
 bool CTaskSimplePickUpBike::ProcessPed(CPed* ped) {
-    if (m_hasAnimFinished) {
+    if (m_hasAnimFinished || !m_veh) {
         return true;
     }
 
@@ -89,10 +89,17 @@ bool CTaskSimplePickUpBike::ProcessPed(CPed* ped) {
 
     if (const auto bike = m_veh->AsBike(); !bike->bikeFlags.bGettingPickedUp) {
         if (m_anim) {
-            if (m_anim->m_CurrentTime > 0.47f) { // Simplified...
-                bike->bikeFlags.bGettingPickedUp = true;
-            }        
-        }        
+            switch (m_anim->GetAnimId()) {
+            case ANIM_ID_CAR_ALIGN_LHS:
+            case ANIM_ID_CAR_ALIGN_RHS:
+            case ANIM_ID_CAR_ALIGNHI_LHS:
+            case ANIM_ID_CAR_ALIGNHI_RHS:
+                if (m_anim->m_CurrentTime > 0.4667f) {
+                    bike->bikeFlags.bGettingPickedUp = true;
+                }
+                break;
+            }
+        }
     }
 
     return false;
