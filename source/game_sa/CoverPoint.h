@@ -49,7 +49,9 @@ public:
     auto GetType() const { return m_Type; }
     auto GetUsage() const { return m_Usage; }
     auto GetDir() const { return m_Dir; }
-    auto GetDirVector() const { return CVector{ std::sin(m_Dir), std::cos(m_Dir), 0.f }; } // Based on `CCover::FindVectorFromDir`
+
+    auto GetDirVector() const { return CVector{ -std::sin(m_Dir), std::cos(m_Dir), 0.f }; } // Like the original `CCover::FindVectorFromDir` (0x698D60), the inverse of `atan2(-x, y)`
+
     auto GetCoverEntity() const { return m_CoverEntity.Get(); }
     auto GetPointOnMap() const { assert(m_Type == eType::POINTONMAP); return m_PointOnMap; }
     CVector GetPos() const;
