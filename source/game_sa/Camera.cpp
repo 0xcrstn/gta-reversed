@@ -1851,7 +1851,12 @@ void CCamera::StartTransition(eCamMode newCamMode) {
         if (activeCamMode == MODE_CAM_ON_A_STRING) {
             m_bUseTransitionBeta        = true;
             const float angle           = CGeneral::GetATanOfXY(activeCam.m_vecFront.x, activeCam.m_vecFront.y);
-            activeCam.m_fTransitionBeta = angle + (fabs(angle) <= HALF_PI ? DegreesToRadians(235.0f) : DegreesToRadians(55.0f));
+            if (notsa::bugfixes::CCamera_StartTransition_TransitionBetaSide) {
+                activeCam.m_fTransitionBeta = angle + (fabs(angle) <= HALF_PI ? DegreesToRadians(235.0f) : DegreesToRadians(55.0f));
+            } else {
+                // BUG: The original wraps a zero constant into [-PI, PI] and tests that against HALF_PI instead of `angle`, so it always adds 235 degrees
+                activeCam.m_fTransitionBeta = angle + DegreesToRadians(235.0f);
+            }
         }
         break;
     }
@@ -1869,21 +1874,16 @@ void CCamera::StartTransition(eCamMode newCamMode) {
     case MODE_ROCKETLAUNCHER_RUNABOUT_HS: {
         CEntity* vehicle             = FindPlayerVehicle();
         CMatrix* playerMat           = vehicle ? &vehicle->GetMatrix() : &FindPlayerPed()->GetMatrix();
-        activeCam.m_fHorizontalAngle = CGeneral::GetATanOfXY(playerMat->GetForward().x, playerMat->GetForward().y);
+        // NOTE: Inlined `fpatan` with (x, y) argument order, not `CGeneral::GetATanOfXY`
+        activeCam.m_fHorizontalAngle = std::atan2(playerMat->GetForward().x, playerMat->GetForward().y);
         activeCam.m_fVerticalAngle   = 0.0f;
         break;
     }
     case MODE_CAM_ON_A_STRING: {
         if (m_bLookingAtPlayer && !m_bJustCameOutOfGarage) {
             m_bUseTransitionBeta = true;
-            const float angle    = CGeneral::GetATanOfXY(activeCam.m_vecFront.x, activeCam.m_vecFront.y);
-            if (activeCamMode == MODE_FIXED) { // Ghidra
-                activeCam.m_fTransitionBeta = angle;
-                break;
-            }
-
-            // Reconstruced + android simplified
-            activeCam.m_fTransitionBeta = angle + (fabs(angle) <= HALF_PI ? DegreesToRadians(235.0f) : DegreesToRadians(55.0f));
+            // NOTE: The original tests `activeCamMode == MODE_FIXED` here, but stores the same value either way
+            activeCam.m_fTransitionBeta = CGeneral::GetATanOfXY(activeCam.m_vecFront.x, activeCam.m_vecFront.y);
         }
         break;
     }
