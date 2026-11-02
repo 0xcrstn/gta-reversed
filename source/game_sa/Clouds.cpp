@@ -671,7 +671,8 @@ void CClouds::Render_MaybeRenderStreaks() {
         );
     };
 
-    const auto scale = (float)((VISIBILE_TIME_MS / 2 - (int32)repeatDelta) * 2);
+    // 0x7144FD - Signed, it's negative in the 2nd half of the visible time
+    const auto scale = (float)(((int32)(VISIBILE_TIME_MS / 2) - (int32)repeatDelta) * 2);
     PushVertex(scale,        { 255, 255, 255, 225 });
     PushVertex(scale + 50.f, { 255, 255, 255, 0 });
 
