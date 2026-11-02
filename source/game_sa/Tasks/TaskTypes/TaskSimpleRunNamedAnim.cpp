@@ -44,6 +44,7 @@ CTaskSimpleRunNamedAnim::CTaskSimpleRunNamedAnim(
     m_bDontInterrupt = bDontInterrupt;
     m_bRunInSequence = bRunInSequence;
     m_bOffsetAtEnd = bOffsetPed;
+    m_bOffsetAvailable = false;
     m_fBlendDelta = blendDelta;
     strcpy_s(m_animName, animName);
     strcpy_s(m_animGroupName, animGroupName);
