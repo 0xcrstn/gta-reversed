@@ -210,9 +210,11 @@ CCoverPoint* CCover::AddCoverPoint(CCoverPoint::eType type, CEntity* coverEntity
             continue;
         }
 
-        const CVector atPos = coverEntity
-            ? coverEntity->GetPosition()
-            : *pos;
+        // 0x698FA5 - Measured from the position if it's set, otherwise from the entity
+        const CVector atPos = pos
+            ? *pos
+            : coverEntity->GetPosition();
+        // NOTE: Using MagSq here (The original compares the distance)
         const auto distToCptSq = (atPos - cpt.GetPointOnMap()).SquaredMagnitude();
 
         // 0x69901E
@@ -222,11 +224,9 @@ CCoverPoint* CCover::AddCoverPoint(CCoverPoint::eType type, CEntity* coverEntity
 
         // 0x69903C
         if (distToCptSq < sq(2.f)) {
-            const auto d = cpt.GetDir() - dir;
-            //if (d < 32 || d > 223) { // 45=32/255*360, 315=223/255*360
-            //    return;
-            //}
-            if (d < DegreesToRadians(45.f) || DegreesToRadians(315.f) > d) {
+            // Facing the same way, within 45 degrees (32/256 of a turn) - The raw directions are compared
+            const auto dirDiff = std::bit_cast<uint8>(cpt.GetDir() - dir);
+            if (dirDiff < 32 || dirDiff > 223) {
                 return &cpt;
             }
         }
@@ -280,30 +280,46 @@ void CCover::Find2HighestPoints(CColTriangle* triangle, CVector* vertPositions, 
 CCoverPoint* CCover::FindAndReserveCoverPoint(CPed* ped, const CVector& targetPos, bool isForAttack) {
     rng::for_each(m_Points, RemoveCoverPointIfEntityLost);
 
-    auto points = m_Points |
-        rng::views::filter(&CCoverPoint::CanAccommodateAnotherPed) |
-        rng::views::filter([&](const CCoverPoint& cpt) { // 0x69936B (Yes, I had to move this up here)
-            return cpt.GetType() != CCoverPoint::eType::POINTONMAP
-                || (targetPos - cpt.GetPointOnMap()).Dot(cpt.GetDirVector()) > 0.f;
-        }) |
-        rng::views::transform([&](CCoverPoint& cpt) -> std::pair<CCoverPoint*, CVector> { // 0x699316
-            return { &cpt, cpt.GetPos() };
-        }) |
-        rng::views::filter([&](auto&& pair) { // 0x6994A1
-            return !isForAttack || CVector2D::Dist(ped->GetPosition2D(), pair.second) < CVector2D::Dist(ped->GetPosition2D(), targetPos) + 4.f;
-        }) |
-        rng::views::transform([&](auto&& pair) -> std::pair<CCoverPoint*, float> { 
-            return { pair.first, CVector2D::DistSqr(ped->GetPosition2D(), pair.second) };
-        });
-    if (points.empty()) {
-        return nullptr;
+    // Find the closest (2D) point the ped can use
+    CCoverPoint* closest{};
+    float        closestDist2D{ 15.f }; // 0x699424 - Only points closer than 15 units are used
+    for (auto& cpt : m_Points) {
+        if (!cpt.CanAccommodateAnotherPed()) {
+            continue;
+        }
+
+        const CVector cptPos = cpt.GetPos();
+
+        // 0x699368 - The target must be in front of the point
+        if (cpt.GetType() == CCoverPoint::eType::POINTONMAP) {
+            const CVector dir{ -std::sin(cpt.GetDir()), std::cos(cpt.GetDir()), 0.f }; // NOTE: Unlike `GetDirVector()` it's `{ -sin, cos }`
+            if ((targetPos - cptPos).Dot(dir) <= 0.f) {
+                continue;
+            }
+        }
+
+        // 0x6993C5
+        if (std::abs(ped->GetPosition().z - cptPos.z) >= 4.f) {
+            continue;
+        }
+
+        const auto dist2D = CVector2D::Dist(ped->GetPosition2D(), cptPos);
+        if (dist2D >= closestDist2D) {
+            continue;
+        }
+
+        // 0x6994C2 - When attacking, the point mustn't be much farther from the target than the ped is
+        if (isForAttack && CVector2D::Dist(cptPos, targetPos) >= CVector2D::Dist(ped->GetPosition2D(), targetPos) + 4.f) {
+            continue;
+        }
+
+        closest       = &cpt;
+        closestDist2D = dist2D;
     }
-    const auto [cpt, dist] = *rng::max_element(points, [](auto&& a, auto&& b) { return a.second < b.second; });;
-    if (!rng::contains(cpt->GetCoveredPeds(), ped)) {
-        return nullptr;
+    if (closest) {
+        closest->ReserveCoverPointForPed(ped);
     }
-    cpt->ReserveCoverPointForPed(ped);
-    return cpt;
+    return closest;
 }
 
 // 0x699570
