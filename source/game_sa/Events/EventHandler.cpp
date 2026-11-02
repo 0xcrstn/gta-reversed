@@ -331,7 +331,7 @@ void CEventHandler::HandleEvents() {
 
     pedEG->TickEvents();
 
-    if (!lastAbortedTask) {
+    if (lastAbortedTask) {
         m_History.RecordAbortedTask(primaryTask && lastAbortedTask == primaryTask ? primaryTask : nullptr);
     }
 
@@ -352,7 +352,7 @@ void CEventHandler::HandleEvents() {
         }
 
         if (const auto currEvent = m_History.GetCurrentEvent()) { // 0x4C4015
-            if (currEvent->GetEventType() == pedEGHighestPriorityEvent->GetEventType()) {
+            if (!currEvent->CanBeInterruptedBySameEvent() && currEvent->GetEventType() == pedEGHighestPriorityEvent->GetEventType()) {
                 pedEG->Remove(pedEGHighestPriorityEvent);
                 pedEG->RemoveInvalidEvents(false);
                 pedEG->Reorganise();
