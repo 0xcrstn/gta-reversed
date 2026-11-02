@@ -1366,7 +1366,7 @@ void CWorld::RemoveFallenCars() {
         };
 
         if (ShouldWeKeepIt()) {
-            CNodeAddress pathNodeAddress = ThePaths.FindNodeClosestToCoors(vecPos, PATH_TYPE_PED, 1000000.0f, 0, 0, 0, 0, 0);
+            CNodeAddress pathNodeAddress = ThePaths.FindNodeClosestToCoors(vecPos, PATH_TYPE_VEH, 1000000.0f, 0, 0, 0, 0, 0);
             if (pathNodeAddress.IsValid()) {
                 const auto pathNodePos = ThePaths.GetPathNode(pathNodeAddress)->GetPosition();
                 vehicle->Teleport(pathNodePos + CVector(0, 0, 3), true);
