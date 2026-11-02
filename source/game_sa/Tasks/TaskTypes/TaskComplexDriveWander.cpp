@@ -26,7 +26,6 @@ void CTaskComplexCarDriveWander::SetUpCar() {
     }
     if (m_Veh->vehicleFlags.bEngineBroken) {
         m_Veh->vehicleFlags.bEngineOn = false;
-        m_Veh->vehicleFlags.bIsLawEnforcer = false;
     } else {
         m_Veh->vehicleFlags.bEngineOn = true;
     }
