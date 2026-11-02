@@ -865,8 +865,8 @@ NOTSA_FORCEINLINE bool ProcessLineSphere_Internal(
     const auto c = m.Dot(m) - sq(sphere.m_fRadius);
     const auto a = d.Dot(d);
 
-    // Line origin inside sphere
-    if (c <= 0.f) {
+    // Line origin inside sphere (A line starting on its surface is processed below, like in the original)
+    if (c < 0.f) {
         if (CCollision::s_DebugSettings.AllowLineOriginInsideSphere) {
             if (depth) {
                 // No need to check for depth value, as 0 is the lowest it ever gets
@@ -933,9 +933,11 @@ bool CCollision::ProcessLineSphere(CColLine const& line, CColSphere const& spher
     colPoint.m_vecNormal = (colPoint.m_vecPoint - sphere.m_vecCenter).Normalized(); // A little different from the original, but same effect
 
     colPoint.m_nSurfaceTypeA = {};
-    colPoint.m_nLightingA    = {};
+    colPoint.m_nPieceTypeA   = 0;
+    // NOTE: The original doesn't write `m_nLightingA`
 
     colPoint.m_nSurfaceTypeB = sphere.m_Surface.m_nMaterial;
+    colPoint.m_nPieceTypeB   = sphere.m_Surface.m_nPiece;
     colPoint.m_nLightingB    = sphere.m_Surface.m_nLighting;
 
     ms_iProcessLineNumCrossings += 2;
@@ -949,6 +951,12 @@ bool CCollision::TestLineSphere(
     const CColSphere& sphere
 ) {
     ZoneScoped;
+
+    // The original treats a line shorter than this as a point, that collides if it's inside the sphere (or on its surface)
+    if ((line.m_vecEnd - line.m_vecStart).Magnitude() < 1e-6f) {
+        return s_DebugSettings.ShapeShapeCollision.IsEnabled(Shape::SSPHERE, Shape::SLINE)
+            && (sphere.m_vecCenter - line.m_vecStart).SquaredMagnitude() <= sq(sphere.m_fRadius);
+    }
 
     return ProcessLineSphere_Internal(line, sphere, nullptr, nullptr);
 }
