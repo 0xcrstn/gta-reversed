@@ -701,8 +701,12 @@ void CShadows::CastPlayerShadowSectorList(
             continue;
         }
 
-        // 0x70A526
-        if (!entity->GetBoundRect().OverlapsWith(shadowRect)) {
+        // 0x70A526 - Unlike in `CRect::OverlapsWith` touching edges don't count
+        const CRect entityRect = entity->GetBoundRect();
+        if (!(shadowRect.left < entityRect.right && shadowRect.right > entityRect.left)) {
+            continue;
+        }
+        if (!(shadowRect.bottom < entityRect.top && shadowRect.top > entityRect.bottom)) {
             continue;
         }
 
