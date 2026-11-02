@@ -46,8 +46,8 @@ void CPedIK::RotateTorsoForArm(const CVector& direction) {
     const auto difAngle = destRotation - m_pPed->m_fCurrentRotation;
     auto resultAngle = DegreesToRadians(45.0f);
 
-    if (difAngle > DegreesToRadians(45.0f) && difAngle <= DegreesToRadians(90.0f)) {
-        resultAngle = difAngle - DegreesToRadians(45.0f);
+    if (difAngle > DegreesToRadians(45.0f)) {
+        resultAngle = std::min(difAngle - DegreesToRadians(45.0f), DegreesToRadians(45.0f)); // 0x5FE011
     } else {
         if (difAngle >= DegreesToRadians(-60.0f))
             return;
@@ -60,11 +60,11 @@ void CPedIK::RotateTorsoForArm(const CVector& direction) {
     }
 
     if (resultAngle != DegreesToRadians(0.0f)) {
-        const auto degreesHalf = RadiansToDegrees(resultAngle / 2.0f);
         if (bRotateWithNeck) { // android doesn't have this check
-            RtQuatRotate(&m_pPed->m_apBones[PED_NODE_NECK]->KeyFrame->q, &XaxisIK, degreesHalf, rwCOMBINEPOSTCONCAT);
+            resultAngle *= 0.5f; // 0x5FE070: Split between the neck and the torso only if the neck is rotated too
+            RtQuatRotate(&m_pPed->m_apBones[PED_NODE_NECK]->KeyFrame->q, &XaxisIK, RadiansToDegrees(resultAngle), rwCOMBINEPOSTCONCAT);
         }
-        RtQuatRotate(&m_pPed->m_apBones[PED_NODE_UPPER_TORSO]->KeyFrame->q, &XaxisIK, degreesHalf, rwCOMBINEPOSTCONCAT);
+        RtQuatRotate(&m_pPed->m_apBones[PED_NODE_UPPER_TORSO]->KeyFrame->q, &XaxisIK, RadiansToDegrees(resultAngle), rwCOMBINEPOSTCONCAT);
     }
 }
 
