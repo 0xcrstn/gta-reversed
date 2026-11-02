@@ -42,12 +42,11 @@ bool CEventAttractor::AffectsPed(CPed* ped) {
             && CPopulation::PedMICanBeCreatedAtThisAttractor(ped->GetModelId(), m_2dEffect->m_szScriptName))
         {
             CTask* activeTask = ped->GetTaskManager().GetActiveTask();
-            if (!activeTask
-                || m_bAvoidLookingAtAttractor
-                ||
-                activeTask->GetTaskType() != TASK_COMPLEX_USE_EFFECT
-                && (m_2dEffect->m_nAttractorType != PED_ATTRACTOR_SHELTER || CWeather::IsRainy()))
-            {
+            // Shelters need rain in every case, not only for peds that aren't using an effect (0x4AF598..0x4AF5A8)
+            if ((!activeTask
+                 || m_bAvoidLookingAtAttractor
+                 || activeTask->GetTaskType() != TASK_COMPLEX_USE_EFFECT)
+                && (m_2dEffect->m_nAttractorType != PED_ATTRACTOR_SHELTER || CWeather::IsRainy())) {
                 if (m_bAvoidLookingAtAttractor)
                     return true;
                 if (CGeneral::GetRandomNumberInRange(0, 100) >= m_2dEffect->m_nPedExistingProbability)
@@ -59,7 +58,7 @@ bool CEventAttractor::AffectsPed(CPed* ped) {
                     CVector point = m_entity->GetMatrix().TransformPoint(m_2dEffect->m_Pos);
                     g_ikChainMan.LookAt("CEventAttractor", ped, 0, time, BONE_UNKNOWN, &point, false, 0.25f, 500, 3, false);
                 }
-            }     
+            }
         }
     }
     return false;
