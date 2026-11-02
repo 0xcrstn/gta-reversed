@@ -2895,7 +2895,7 @@ void CPed::PreRenderAfterTest()
         // FIX_BUGS: Original check was only for 1st player in high FX quality.
         if (g_fx.GetFxQuality() != FX_QUALITY_VERY_HIGH && (g_fx.GetFxQuality() != FX_QUALITY_HIGH || !IsPlayer())) {
             DrawDummyShadow();
-        } else if (const auto b = GetBonePosition(eBoneTag::BONE_ROOT); DistanceBetweenPoints2D(b, TheCamera.GetPosition2D()) <= MAX_DISTANCE_PED_SHADOWS_SQR) {
+        } else if (const auto b = GetBonePosition(eBoneTag::BONE_ROOT); DistanceBetweenPointsSquared2D(b, TheCamera.GetPosition2D()) <= MAX_DISTANCE_PED_SHADOWS_SQR) {
             const auto IsVehicleRTShadable = [](eVehicleType t) {
                 switch (t) {
                 case VEHICLE_TYPE_BMX:
