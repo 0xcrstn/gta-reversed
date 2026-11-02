@@ -2,6 +2,7 @@
 
 #include "TaskSimpleSwim.h"
 #include "TaskSimpleClimb.h"
+#include <reversiblebugfixes/Bugs.hpp>
 
 void CTaskSimpleSwim::InjectHooks() {
     RH_ScopedVirtualClass(CTaskSimpleSwim, 0x870920, 9);
@@ -184,7 +185,7 @@ bool CTaskSimpleSwim::ProcessPed(CPed* ped) {
         }
 
         ped->AsPlayer()->HandlePlayerBreath(bDecreaseAir, fDecreaseAirMult);
-        if (m_pPed && m_nSwimState != SWIM_UNDERWATER_SPRINTING) {
+        if (m_bFinishedBlending && m_nSwimState != SWIM_UNDERWATER_SPRINTING) { // 0x68B39D
             if (CStats::GetFatAndMuscleModifier(STAT_MOD_AIR_IN_LUNG) * 0.5f > ped->GetPlayerData()->m_fBreath) {
                 ped->Say(CTX_GLOBAL_PAIN_CJ_SWIM_GASP);
             }
@@ -415,11 +416,10 @@ void CTaskSimpleSwim::ProcessSwimAnims(CPed* ped) {
                 break;
             }
             if (RpAnimBlendClumpGetAssociation(player->GetRpClump(), ANIM_ID_CLIMB_JUMP)) { // 0x689C4B
+                // 0x689C9D: Keep climbing, unless the ped is under water (Then it's back to swimming)
                 float waterLevel1 = 0.0f;
-                if (CWaterLevel::GetWaterLevel(pedPos, waterLevel1, true)) {
-                    if (pedPos.z + 0.5f < waterLevel1) {
-                        return; // todo: check this
-                    }
+                const auto isUnderWater = CWaterLevel::GetWaterLevel(pedPos, waterLevel1, true) && pedPos.z + 0.5f < waterLevel1;
+                if (!isUnderWater) {
                     break;
                 }
             }
@@ -662,7 +662,9 @@ void CTaskSimpleSwim::ProcessEffects(CPed* ped) {
         }
         if ((unsigned)CGeneral::GetRandomNumberInRange(0, 100) < oxygen) {
             RpHAnimHierarchy* hier = GetAnimHierarchyFromSkinClump(ped->GetRpClump()); // todo: almost CPed::GetBoneMatrix
-            CVector* bonePos = static_cast<CVector*>(&RpHAnimHierarchyGetMatrixArray(hier)[BONE_JAW].pos); // FIX_BUGS: Air bubbles from ass :D (BONE_SPINE1)
+            // 0x68AC8F: Originally `BONE_SPINE1` (Air bubbles from ass :D)
+            const auto bone    = notsa::bugfixes::CTaskSimpleSwim_ProcessEffects_AirBubblesPosition ? BONE_JAW : BONE_SPINE1;
+            CVector*   bonePos = static_cast<CVector*>(&RpHAnimHierarchyGetMatrixArray(hier)[bone].pos);
 
             static FxPrtMult_c fxPrtMult(1.0f, 1.0f, 1.0f, 0.25f, 0.3f, 0.0f, 0.5f);
             g_fx.m_Bubble->AddParticle(*bonePos, { 0.0f, 0.0f, 2.0f }, 0.0f, fxPrtMult);
@@ -706,10 +708,7 @@ void CTaskSimpleSwim::ProcessControlAI(CPed* ped) {
                 if (pedGroup && pedGroup->GetMembership().GetLeader() == m_pPed) {
                     bPedGroupSet = true;
                     auto swimTask = m_pPed->GetIntelligence()->GetTaskSwim();
-                    if (swimTask &&
-                        swimTask->m_nSwimState == SWIM_SPRINTING &&
-                        vecPosition.Magnitude() > 5.0f
-                    ) {
+                    if (swimTask && swimTask->m_nSwimState == SWIM_SPRINTING && dist2d > 5.0f) { // 0x689882: 2D distance
                         m_nSwimState = SWIM_SPRINTING;
                     }
                 }
