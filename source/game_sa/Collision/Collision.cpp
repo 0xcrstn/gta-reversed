@@ -1240,9 +1240,10 @@ bool CCollision::ProcessDiscCollision(
         }
     } else {
         // Original (0x413960): hitK = sqrt(radius² - dx² - dy²) + cp.z
+        // It isn't clamped: Outside of the disk's radius it's NaN, so the check below rejects the contact
         const auto dx = cp.x - disk.m_vecCenter.x;
         const auto dy = cp.y - disk.m_vecCenter.y;
-        const auto lineRatioNow = std::sqrt(std::max(0.0f, sq(disk.m_fRadius) - dx * dx - dy * dy)) + cp.z;
+        const auto lineRatioNow = std::sqrt(sq(disk.m_fRadius) - dx * dx - dy * dy) + cp.z;
         if (lineRatioNow >= lineRatio) {
             lineCollision = true;
             lineRatio     = lineRatioNow;
