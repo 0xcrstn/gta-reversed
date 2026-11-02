@@ -2164,7 +2164,7 @@ void CAEVehicleAudioEntity::ProcessVehicleSkidding(tVehicleParams& vp) {
     };
     if (m_AuSettings.VehicleAudioType == AE_BMX) { // 0x4F90D3
         auto* const cfg = &s_Config.Skid.BMX;
-        DoPlaySkidSound(SND_GENRL_VEHICLE_GEN_BIKE_SKID_A, cfg->VolBase, cfg->FrqBase + cfg->FrqWheelSkidFactor * sumWheelSkid);
+        DoPlaySkidSound(SND_GENRL_VEHICLE_GEN_BIKE_SKID_A, cfg->FrqBase + cfg->FrqWheelSkidFactor * sumWheelSkid, cfg->VolBase);
     } else {
         float vol = m_AuSettings.IsPlaneOrHeli()
             ? s_Config.Skid.VolOffsetForPlaneOrHeli
@@ -4344,9 +4344,9 @@ void CAEVehicleAudioEntity::PlayBicycleSound(eBicycleSoundType st, eSoundBankSlo
         return;
     }
 
-    const auto DoPlaySound = [&](eSoundID sfx, float rollOff, uint32 flags = 0, int16 playTime = 0) {
+    const auto DoPlaySound = [&](eSoundBankSlot bankSlot, eSoundID sfx, float rollOff, uint32 flags = 0, int16 playTime = 0) {
         m_EngineSounds[st].Sound = AESoundManager.PlaySound({
-            .BankSlotID      = slot,
+            .BankSlotID    = bankSlot,
             .SoundID       = sfx,
             .AudioEntity   = this,
             .Pos           = m_Entity->GetPosition(),
@@ -4382,18 +4382,18 @@ void CAEVehicleAudioEntity::PlayBicycleSound(eBicycleSoundType st, eSoundBankSlo
             {9, 50}
         };
         const auto* const choice = &CGeneral::RandomChoice(RandomArray);
-        DoPlaySound(choice->SfxID, 1.f, SOUND_START_PERCENTAGE, choice->PlayPercentage);
+        DoPlaySound(SND_BANK_SLOT_COLLISIONS, choice->SfxID, 1.f, SOUND_START_PERCENTAGE, choice->PlayPercentage);
         break;
     }
     case AE_SOUND_BICYCLE_TYRE: {
         if (AEAudioHardware.IsSoundBankLoaded(m_DummyEngineBank, m_DummySlot)) {
-            DoPlaySound(sfx, 2.5f);
+            DoPlaySound(slot, sfx, 2.5f);
         }
         break;
     }
     case AE_SOUND_BICYCLE_SPROCKET_1: {
         if (AEAudioHardware.IsSoundBankLoaded(m_PlayerEngineBank, SND_BANK_SLOT_PLAYER_ENGINE_P)) {
-            DoPlaySound(sfx, 1.5f);
+            DoPlaySound(slot, sfx, 1.5f);
         }
         break;
     }
