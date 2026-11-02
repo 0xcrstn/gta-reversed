@@ -13,6 +13,7 @@ auto& gBoneIndices = StaticRef<notsa::mdarray<int16, 10, 64>>(0xBBC8C8);
 auto& ms_ratiosHaveChanged  = StaticRef<bool>(0x8D0AA4);
 auto& ms_geometryHasChanged = StaticRef<bool>(0x8D0AA5);
 auto& ms_textureHasChanged  = StaticRef<bool>(0x8D0AA6);
+auto& ms_oldClothesDesc     = StaticRef<const CPedClothesDesc*>(0xBC1288);
 
 void CClothesBuilder::InjectHooks() {
     RH_ScopedClass(CClothesBuilder);
@@ -517,17 +518,11 @@ RpClump* CClothesBuilder::CreateSkinnedClump(RpClump* bones, RwTexDictionary* di
         }
     }
 
+    ms_oldClothesDesc = odscr;
     if (odscr) {
-        ms_geometryHasChanged = false;
-        ms_ratiosHaveChanged  = false;
-        if (odscr->m_fFatStat != ndscr.m_fFatStat || odscr->m_fMuscleStat != ndscr.m_fMuscleStat) {
-            ms_textureHasChanged = true;
-            ms_geometryHasChanged = true;
-        } else {
-            ms_textureHasChanged = true;
-        }
-        ms_geometryHasChanged = !rng::equal(ndscr.m_anModelKeys, odscr->m_anModelKeys);
-        ms_ratiosHaveChanged  = !rng::equal(ndscr.m_anTextureKeys, odscr->m_anTextureKeys);
+        ms_ratiosHaveChanged  = odscr->m_fFatStat != ndscr.m_fFatStat || odscr->m_fMuscleStat != ndscr.m_fMuscleStat;
+        ms_geometryHasChanged = ms_ratiosHaveChanged || !rng::equal(ndscr.m_anModelKeys, odscr->m_anModelKeys);
+        ms_textureHasChanged  = !rng::equal(ndscr.m_anTextureKeys, odscr->m_anTextureKeys);
         if (!ms_ratiosHaveChanged && !ms_geometryHasChanged && !ms_textureHasChanged) {
             return nullptr;
         }
@@ -648,6 +643,7 @@ RpClump* CClothesBuilder::CreateSkinnedClump(RpClump* bones, RwTexDictionary* di
     // Free memory
     {
         RpGeometryDestroy(tmpGeo);
+        RpGeometrySetFlags(tmpGeo, RpGeometryGetFlags(tmpGeo) | rpGEOMETRYPOSITIONS); // 0x5A6D5A - The atomic still holds a reference to it
 
         RwTexDictionarySetCurrent(dict);
         for (auto i = 0; i < NO_BODY_PARTS; i++) {
