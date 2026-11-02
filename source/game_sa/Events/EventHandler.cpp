@@ -1521,9 +1521,9 @@ void CEventHandler::ComputeObjectCollisionPassiveResponse(CEventPotentialWalkInt
 }
 
 // 0x4B92B0
-void CEventHandler::ComputeObjectCollisionResponse(CEventObjectCollision* e, CTask* tactive, CTask* tsimplest) { // Same code as `ComputeObjectCollisionPassiveResponse`
+void CEventHandler::ComputeObjectCollisionResponse(CEventObjectCollision* e, CTask* tactive, CTask* tsimplest) { // Like `ComputeObjectCollisionPassiveResponse`, but without the `bInVehicle` check
     m_EventResponseTask = [&]() -> CTask* {
-        if (!e->m_object || m_Ped->bInVehicle || e->m_moveState == PEDMOVE_STILL) {
+        if (!e->m_object || e->m_moveState == PEDMOVE_STILL) {
             return nullptr;
         }
         if (!tsimplest || !CTask::IsGoToTask(tsimplest)) {
