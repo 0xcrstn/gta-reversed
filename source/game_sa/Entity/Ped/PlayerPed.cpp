@@ -58,7 +58,8 @@ void CPlayerPed::InjectHooks() {
     RH_ScopedInstall(MakePlayerGroupDisappear, 0x60A440);
     RH_ScopedInstall(MakePlayerGroupReappear, 0x60A4B0);
     RH_ScopedInstall(HandleSprintEnergy, 0x60A550);
-    RH_ScopedInstall(GetButtonSprintResults, 0x60A820, { .Reversed = false });
+    // SetRealMoveAnim keeps an anim blend association in EDX across the call (0x60B430) and stores the result through it (0x60B44C)
+    RH_ScopedInstall(GetButtonSprintResults, 0x60A820, { .StackArgumentsToPreserve = 1, .PreserveRegisters = true });
     RH_ScopedInstall(HandlePlayerBreath, 0x60A8D0);
     RH_ScopedOverloadedInstall(MakeChangesForNewWeapon, "", 0x60B460, void(CPlayerPed::*)(eWeaponType));
     RH_ScopedGlobalInstall(LOSBlockedBetweenPeds, 0x60B550);
@@ -75,15 +76,15 @@ void CPlayerPed::InjectHooks() {
     RH_ScopedVMTInstall(ProcessControl, 0x60EA90);
     RH_ScopedVMTInstall(SetMoveAnim, 0x609490);
     RH_ScopedInstall(ProcessAnimGroups, 0x6098F0, { .Reversed = false });
-    RH_ScopedInstall(ControlButtonSprint, 0x60A610, { .Reversed = false });
+    RH_ScopedInstall(ControlButtonSprint, 0x60A610);
     RH_ScopedInstall(SetRealMoveAnim, 0x60A9C0, { .Reversed = false });
     RH_ScopedInstall(Compute3rdPersonMouseTarget, 0x60B650, { .Reversed = false });
-    RH_ScopedInstall(DrawTriangleForMouseRecruitPed, 0x60BA80, { .Reversed = false });
+    RH_ScopedInstall(DrawTriangleForMouseRecruitPed, 0x60BA80);
     RH_ScopedInstall(KeepAreaAroundPlayerClear, 0x60C1E0, { .Reversed = false });
     RH_ScopedInstall(MakeThisPedJoinOurGroup, 0x60C840, { .Reversed = false });
     RH_ScopedInstall(PlayerWantsToAttack, 0x60CC50, { .Reversed = false });
     RH_ScopedInstall(SetInitialState, 0x60CD20, { .Reversed = false });
-    RH_ScopedInstall(EvaluateNeighbouringTarget, 0x60D1C0, { .Reversed = false });
+    RH_ScopedInstall(EvaluateNeighbouringTarget, 0x60D1C0);
     RH_ScopedInstall(ProcessGroupBehaviour, 0x60D350, { .Reversed = false });
     RH_ScopedInstall(ProcessWeaponSwitch, 0x60D850, { .Reversed = false });
     RH_ScopedInstall(FindWeaponLockOnTarget, 0x60DC50, { .Reversed = false });
@@ -692,19 +693,43 @@ constexpr struct tPlayerSprintSet { // From 0x8D2460
 
 // 0x60A610
 float CPlayerPed::ControlButtonSprint(eSprintType sprintType) {
-    return plugin::CallMethodAndReturn<float, 0x60A610, CPlayerPed *, eSprintType>(this, sprintType);
+    auto* const playerData = GetPlayerData();
+    if (!playerData) {
+        return 0.0f;
+    }
+
+    auto* const pad       = GetPadFromPlayer();
+    const auto& sprintSet = PLAYER_SPRINT_SET[sprintType];
+    const auto  canSprint = !playerData->m_bPlayerSprintDisabled && (playerData->m_fMoveSpeed > 0.0f || playerData->m_fTimeCanRun > 0.0f);
+    if (pad->SprintJustDown() && canSprint) {
+        playerData->m_fMoveSpeed = std::min(sprintSet.field_0 + playerData->m_fMoveSpeed, sprintSet.field_10);
+    } else if (pad->GetSprint() && canSprint) {
+        playerData->m_fMoveSpeed = std::max(playerData->m_fMoveSpeed - CTimer::GetTimeStep() * sprintSet.field_4, 1.0f);
+    } else if (playerData->m_fMoveSpeed > 0.0f) {
+        playerData->m_fMoveSpeed = std::max(playerData->m_fMoveSpeed - CTimer::GetTimeStep() * sprintSet.field_8, 0.0f);
+    }
+
+    float speedRatio = 0.0f, energyPerTimeStep = 0.0f;
+    if (playerData->m_fMoveSpeed > sprintSet.field_C) {
+        speedRatio        = playerData->m_fMoveSpeed / sprintSet.field_C;
+        energyPerTimeStep = sprintSet.field_18;
+    } else if (playerData->m_fMoveSpeed > 0.0f && canSprint) {
+        speedRatio        = 1.0f;
+        energyPerTimeStep = sprintSet.field_14;
+    }
+    if (speedRatio <= 0.0f) {
+        return 0.0f;
+    }
+
+    if (!HandleSprintEnergy(true, energyPerTimeStep)) {
+        playerData->m_fMoveSpeed = 0.0f;
+        return 0.0f;
+    }
+    return std::max(speedRatio - 1.0f, 0.0f) * sprintSet.field_1C + 1.0f;
 }
 
-// Reverse CPlayerPed::SetRealMoveAnim before hooking this func
 // 0x60A820
 float CPlayerPed::GetButtonSprintResults(eSprintType sprintType) {
-    return plugin::CallMethodAndReturn<float, 0x60A820, CPlayerPed *, eSprintType>(this, sprintType);
-
-    // Forces the compiler to preserve the value of `edx`.
-    // Otherwise it's value is lost when called from 0x60B44C.
-    // which causes a crash (as it is used to store a pointer to an anim blend assoc)
-    __asm { and edx, edx };
-
     if (GetPlayerData()->m_fMoveSpeed <= PLAYER_SPRINT_THRESHOLD) {
         return GetPlayerData()->m_fMoveSpeed <= 0.0f ? 0.0f : 1.0f;
     } else {
@@ -798,7 +823,61 @@ void CPlayerPed::Compute3rdPersonMouseTarget(bool meleeWeapon) {
 
 // 0x60BA80
 void CPlayerPed::DrawTriangleForMouseRecruitPed() {
-    plugin::CallMethod<0x60BA80, CPlayerPed *>(this);
+    if (!m_p3rdPersonMouseTarget) {
+        return;
+    }
+
+    RwRenderStateSet(rwRENDERSTATEZWRITEENABLE,      RWRSTATE(FALSE));
+    RwRenderStateSet(rwRENDERSTATEZTESTENABLE,       RWRSTATE(TRUE));
+    RwRenderStateSet(rwRENDERSTATESRCBLEND,          RWRSTATE(rwBLENDSRCALPHA));
+    RwRenderStateSet(rwRENDERSTATEDESTBLEND,         RWRSTATE(rwBLENDINVSRCALPHA));
+    RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, RWRSTATE(TRUE));
+    RwRenderStateSet(rwRENDERSTATETEXTURERASTER,     RWRSTATE(NULL));
+    RwRenderStateSet(rwRENDERSTATEALPHATESTFUNCTION, RWRSTATE(rwALPHATESTFUNCTIONALWAYS));
+
+    auto* const target = m_p3rdPersonMouseTarget;
+
+    // Red to green with the target's health
+    uint8 red = 0, green = 0;
+    if (const auto health = target->m_fHealth / target->m_fMaxHealth; health > 0.0f) {
+        const auto t = std::min(health, 1.0f);
+        red          = static_cast<uint8>((1.0f - t) * 255.0f);
+        green        = static_cast<uint8>(t * 255.0f);
+    }
+
+    // Grows with the distance between 10 and 60 units
+    const auto size  = std::min(std::max(0.0f, DistanceBetweenPoints(target->GetPosition(), GetPosition()) - 10.0f) * 0.02f, 1.0f) * 0.825f + 0.175f;
+    const auto right = TheCamera.GetRightVector() * size;
+    const auto up    = CVector{ 0.0f, 0.0f, size };
+    const auto pos   = target->GetPosition() + CVector{ 0.0f, 0.0f, 1.0f };
+
+    // Pointing down for `PED_TYPE_GANG1` peds, up for everyone else
+    auto corners = target->m_nPedType == PED_TYPE_GANG1
+        ? std::array{ pos, pos - right + up, pos + right + up }
+        : std::array{ pos + up, pos + right, pos - right };
+    for (auto&& [i, corner] : rngv::enumerate(corners)) {
+        corner += (TheCamera.GetPosition() - corner).Normalized(); // Move it 1 unit towards the camera
+
+        auto* const vertex = &TempBufferVertices.m_3d[i];
+        RwIm3DVertexSetPos(vertex, corner.x, corner.y, corner.z);
+        RwIm3DVertexSetRGBA(vertex, red, green, 0, i == 0 ? 255 : 0); // Only the first corner is opaque
+    }
+    aTempBufferIndices[0] = 0;
+    aTempBufferIndices[1] = 1;
+    aTempBufferIndices[2] = 2;
+
+    if (RwIm3DTransform(TempBufferVertices.m_3d, 3, nullptr, rwIM3D_VERTEXXYZ | rwIM3D_VERTEXRGBA)) {
+        RwIm3DRenderIndexedPrimitive(rwPRIMTYPETRILIST, aTempBufferIndices, 3);
+        RwIm3DEnd();
+    }
+
+    RwRenderStateSet(rwRENDERSTATETEXTURERASTER,     RWRSTATE(NULL));
+    RwRenderStateSet(rwRENDERSTATEZWRITEENABLE,      RWRSTATE(TRUE));
+    RwRenderStateSet(rwRENDERSTATEZTESTENABLE,       RWRSTATE(TRUE));
+    RwRenderStateSet(rwRENDERSTATESRCBLEND,          RWRSTATE(rwBLENDSRCALPHA));
+    RwRenderStateSet(rwRENDERSTATEDESTBLEND,         RWRSTATE(rwBLENDINVSRCALPHA));
+    RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, RWRSTATE(FALSE));
+    RwRenderStateSet(rwRENDERSTATEALPHATESTFUNCTION, RWRSTATE(rwALPHATESTFUNCTIONGREATER));
 }
 
 // 0x60C0C0
@@ -964,7 +1043,27 @@ void CPlayerPed::EvaluateTarget(CEntity* target, CEntity *& outTarget, float & o
 
 // 0x60D1C0
 void CPlayerPed::EvaluateNeighbouringTarget(CEntity* target, CEntity** outTarget, float* outTargetPriority, float maxDistance, float arg4, bool arg5) {
-    plugin::CallMethod<0x60D1C0, CPlayerPed *, CEntity*, CEntity**, float*, float, float, bool>(this, target, outTarget, outTargetPriority, maxDistance, arg4, arg5);
+    if (DistanceBetweenPoints(target->GetPosition(), GetPosition()) > maxDistance) {
+        return;
+    }
+
+    if (DoesTargetHaveToBeBroken(target, &GetActiveWeapon())) {
+        return;
+    }
+
+    // NOTE: Unlike in `EvaluateTarget` the angle is measured from the camera, not from the player
+    const auto angle = CGeneral::LimitRadianAngle(CGeneral::GetATanOf(target->GetPosition() - TheCamera.GetPosition()) - arg4);
+    if (std::abs(angle) >= DegreesToRadians(50.0f)) {
+        return;
+    }
+
+    // Targets on the requested side get a higher priority the closer they are to the reference angle, the others a very low one
+    const auto sideAngle = arg5 ? angle : -angle;
+    const auto priority  = sideAngle > 0.0f ? -sideAngle : -100'000.0f;
+    if (priority > *outTargetPriority) {
+        *outTarget         = target;
+        *outTargetPriority = priority;
+    }
 }
 
 // 0x60D350
