@@ -57,7 +57,7 @@ void CPathFind::InjectHooks() {
     RH_ScopedOverloadedInstall(FindNodeCoorsForScript, "LinkedNode", 0x4505E0, CVector(CPathFind::*)(CNodeAddress, bool*));
     RH_ScopedInstall(IsWaterNodeNearby, 0x450DE0);
     RH_ScopedInstall(CountNeighboursToBeSwitchedOff, 0x4504F0);
-    RH_ScopedInstall(FindNodeOrientationForCarPlacement, 0x450320, { .Reversed = false });
+    RH_ScopedInstall(FindNodeOrientationForCarPlacement, 0x450320);
     //RH_ScopedInstall(FindNodePairClosestToCoors, 0x44FEE0);
     RH_ScopedInstall(FindNodeClosestToCoorsFavourDirection, 0x44FCE0);
     //RH_ScopedInstall(FindNodeClosestToCoors, 0x44FA30);
@@ -1076,7 +1076,39 @@ size_t CPathFind::CountNeighboursToBeSwitchedOff(const CPathNode& node) {
 
 // 0x450320
 float CPathFind::FindNodeOrientationForCarPlacement(CNodeAddress nodeInfo) {
-    return plugin::CallMethodAndReturn<float, 0x450320, CPathFind*, CNodeAddress>(this, nodeInfo);
+    if (!IsAreaNodesAvailable(nodeInfo)) {
+        return 0.f;
+    }
+
+    const auto* const node = GetPathNode(nodeInfo);
+    if (!node->m_nNumLinks) {
+        return 0.f;
+    }
+
+    // Find the first link that has lanes (the last link is used if none of the others have any)
+    auto linkIdx = 0u;
+    for (; linkIdx < node->m_nNumLinks - 1u; linkIdx++) {
+        const auto naviLinkAddr = m_pNaviLinks[nodeInfo.m_wAreaId][node->m_wBaseLinkId + linkIdx];
+        if (!IsAreaLoaded(naviLinkAddr.m_wAreaId)) {
+            continue;
+        }
+        const auto& naviLink = GetCarPathLink(naviLinkAddr);
+        const auto  numLanes = naviLink.m_attachedTo == nodeInfo
+            ? naviLink.m_numSameDirLanes
+            : naviLink.m_numOppositeDirLanes;
+        if (numLanes) {
+            break;
+        }
+    }
+
+    const auto linkedAddr = m_pNodeLinks[nodeInfo.m_wAreaId][node->m_wBaseLinkId + linkIdx];
+    if (!IsAreaNodesAvailable(linkedAddr)) {
+        return 0.f;
+    }
+
+    CVector dir{ CVector2D{ GetPathNode(linkedAddr)->GetPosition() - node->GetPosition() }, 0.f };
+    dir.Normalise();
+    return RadiansToDegrees(std::atan2(-dir.x, dir.y));
 }
 
 // 0x452160
