@@ -257,10 +257,19 @@ void CTaskManager::ManageTasks() {
         TT_SUCCESS,  //< There's currently an active task.
         TT_ADVANCED  //< New sub-tasks were created, and there's currently an active task.
     };
-    const auto ProcessTaskTree = [this](CTask* root, bool bIsPrimary) {
+
+    const auto ProcessTaskTree = [this](CTask*& slot, bool bIsPrimary) {
+        CTask* const root = slot;
+
+        // A primary task can be replaced in its slot while it's processed, so (like the original) it's re-read from the slot.
+        // Secondary tasks always use the root the call started with.
+        const auto GetRoot = [&] {
+            return bIsPrimary ? slot : root;
+        };
+
         ParentsControlChildren(root);
 
-        auto lastTask = GetLastTaskOf(root);
+        auto lastTask = GetLastTaskOf(GetRoot());
 
         // The task tree can only be "terminated" with a `Simple` task. (Because a complex task must always have a sub-task)
         // If the last task is complex that means that creating all sub-tasks (See `AddSubTasks`) failed.
@@ -274,7 +283,7 @@ void CTaskManager::ManageTasks() {
             SetNextSubTask(lastTask->GetParent());
 
             // If setting the next sub-task above was successful then the last task has changed
-            lastTask = GetLastTaskOf(root);
+            lastTask = GetLastTaskOf(GetRoot());
 
             // A complex task in this case means that the primary task has finished
             if (lastTask->IsComplex()) {
@@ -291,7 +300,7 @@ void CTaskManager::ManageTasks() {
         SetNextSubTask(lastTask->GetParent());
 
         // Check if the task tree has finished (See `SetNextSubTask` for more info)
-        if (!root->GetSubTask()) {
+        if (!GetRoot()->GetSubTask()) {
             return TT_FINISHED;
         }
 
@@ -308,8 +317,8 @@ void CTaskManager::ManageTasks() {
             return;
         }
 
-        // The `10` here has no particular meaning, it's just an arbitrary iteration limit
-        for (size_t i = 0; i < 10; i++) {
+        // Arbitrary iteration limit, the original does at most 11 passes (0x681D26)
+        for (size_t i = 0; i <= 10; i++) {
             const auto res = ProcessTaskTree(activePrimaryTask, true);
 
             if (res == TT_FINISHED) {
