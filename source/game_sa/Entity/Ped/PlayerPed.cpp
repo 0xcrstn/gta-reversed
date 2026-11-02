@@ -863,10 +863,10 @@ CPed* CPlayerPed::FindPedToAttack() {
     end.z = 0.0f;
 
     CPed* closestPed{};
-    float closestDistance = std::numeric_limits<float>::max();
+    float closestDistance           = 99999.9f;
 
     CPedGroupMembership& membership = GetPlayerGroup().GetMembership();
-    for (int i = 0; GetPedPool()->GetSize(); i++) {
+    for (auto i = GetPedPool()->GetSize(); i-- > 0;) { // From the last slot down, on equal scores the first ped found wins
         CPed* ped = GetPedPool()->GetAt(i);
         if (!ped)
             continue;
