@@ -614,10 +614,10 @@ void CAEPedAudioEntity::HandleSwimSplash(eAudioEvents event) {
 
 // 0x4E2790
 void CAEPedAudioEntity::HandleSwimWake(eAudioEvents event) {
-    if (!AEAudioHardware.EnsureSoundBankIsLoaded(SND_BANK_GENRL_COLLISIONS, SND_BANK_SLOT_COLLISIONS, true)) {
-        return;
-    }
     if (!AESoundManager.AreSoundsOfThisEventPlayingForThisEntityAndPhysical(event, this, m_pPed)) {
+        if (!AEAudioHardware.EnsureSoundBankIsLoaded(SND_BANK_GENRL_COLLISIONS, SND_BANK_SLOT_COLLISIONS, true)) {
+            return;
+        }
         AESoundManager.PlaySound({
             .BankSlotID         = SND_BANK_SLOT_COLLISIONS,
             .SoundID            = 3,
