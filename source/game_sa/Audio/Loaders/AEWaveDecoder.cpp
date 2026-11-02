@@ -5,6 +5,8 @@
 
 #include "AEWaveDecoder.h"
 
+#include <reversiblebugfixes/Bugs.hpp>
+
 // 0x503250
 CAEWaveDecoder::CAEWaveDecoder(CAEDataStream* dataStream) : CAEStreamingDecoder(dataStream), m_bInitialized(false), _dataStreamCopy(dataStream) {
     // NOP
@@ -70,6 +72,11 @@ size_t CAEWaveDecoder::FillBuffer(void* dest, size_t size) {
 // 0x503310
 long CAEWaveDecoder::GetStreamLengthMs() {
     if (m_bInitialized) {
+        // NOTSA: The original divides by `sampleRate * 4` (as floats), we divide by `blockAlign`, which can be 0.
+        // Returning -1 makes `Initialise` reject the file, so the other users of `blockAlign` never see it either.
+        if (notsa::bugfixes::CAEWaveDecoder_BlockAlign_DivisionByZero && blockAlign == 0) {
+            return -1;
+        }
         uint32 samples = dataChunkSize / blockAlign;
         // More precise way would be involving using GCD
         return long((float)samples * 1000.0f / (float)sampleRate);
