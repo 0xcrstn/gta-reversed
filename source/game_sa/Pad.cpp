@@ -1125,8 +1125,9 @@ bool CPad::SniperZoomOut() const {
 // todo: Describe our modification
 // 0x540250
 bool CPad::WeaponJustDown(CPed* ped) const {
-    if (DisablePlayerControls || bDisablePlayerDisplayVitalStats)
+    if (DisablePlayerControls || bDisablePlayerFireWeapon) {
         return false;
+    }
 
     switch (Mode) {
     case 0:
