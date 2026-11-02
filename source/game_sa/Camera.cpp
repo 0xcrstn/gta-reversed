@@ -1151,16 +1151,17 @@ void CCamera::SetColVarsAimWeapon(int32 aimingType) {
 
 // 0x50CC50
 void CCamera::SetColVarsPed(ePedType pedType, int32 nCamPedZoom) {
-    const int32 camColVars = [=] {
-        switch (pedType) {
-        case PED_TYPE_PLAYER1:
-            return nCamPedZoom + 3;
-        case PED_TYPE_PLAYER2:
-            return nCamPedZoom + 6;
-        default:
-            return 0;
-        }
-    }();
+    int32 camColVars;
+    switch (pedType) {
+    case PED_TYPE_PLAYER1:
+        camColVars = nCamPedZoom + 3;
+        break;
+    case PED_TYPE_PLAYER2:
+        camColVars = nCamPedZoom + 6;
+        break;
+    default:
+        return;
+    }
 
     if (camColVars != gCurCamColVars) {
         gCurCamColVars = camColVars;
