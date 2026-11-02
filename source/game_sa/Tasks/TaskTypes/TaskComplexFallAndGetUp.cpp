@@ -91,10 +91,12 @@ bool CTaskComplexFallAndGetUp::MakeAbortable(CPed* ped, eAbortPriority priority,
         return false;
 
     if (priority == ABORT_PRIORITY_LEISURE) {
-        if (IsFalling())
+        if (IsFalling()) {
             return false;
-        else
-            m_nFallDownTime = 0;
+        }
+        m_nFallDownTime = 0;
+        m_pSubTask->MakeAbortable(ped, priority, event);
+        return false; // 0x67885D - The sub-task's result is ignored
     }
 
     return m_pSubTask->MakeAbortable(ped, priority, event);
