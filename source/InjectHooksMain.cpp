@@ -1297,7 +1297,7 @@ void InjectHooksMain() {
         CTaskComplexEnterBoatAsDriver::InjectHooks();
         CTaskSimpleFight::InjectHooks();
         CTaskComplexUseWaterCannon::InjectHooks();
-        // CTaskComplexDriveToPoint::InjectHooks();
+        CTaskComplexDriveToPoint::InjectHooks();
         CTaskSimpleSlideToCoord::InjectHooks();
         // CTaskComplexPartnerDeal::InjectHooks();
         CTaskSimplePickUpEntity::InjectHooks();
