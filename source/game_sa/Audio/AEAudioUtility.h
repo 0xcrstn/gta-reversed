@@ -11,12 +11,13 @@ public:
     static void      StaticInitialise();
 
     /*!
-    * @brief This and CGeneral differs in that this function returns a number [min, max + 1], while
-    * @brief the other [min, max]. To solve this we do `max + 1`
+    * @brief Returns a number in [min, max] (unlike CGeneral's, `max` is included)
     */
+    // 0x4D9C10
     template<std::integral T>
     static T GetRandomNumberInRange(T min, T max) {
-        return CGeneral::GetRandomNumberInRange<T>(min, max + 1);
+        const auto rnd = static_cast<float>(CGeneral::GetRandomNumber()) * (1.0f / 32768.0f); // [0, 1)
+        return static_cast<T>(min + static_cast<int32>(rnd * static_cast<float>(max - min + 1)));
     }
 
     template<typename T>
