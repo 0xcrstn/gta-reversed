@@ -99,14 +99,17 @@ RpAtomic* GetAtomicWithName(RpClump* clump, const char* name) {
     struct Context {
         notsa::ci_string_view name{};
         RpAtomic*             atomic{};
-    } c{name};
-    RpClumpForAllAtomics(clump, [](RpAtomic* a, void* data) { // 0x5A47E0
+    } c{ name };
+
+    const auto FindAtomicCB = [](RpAtomic* a, void* data) -> RpAtomic* { // 0x5A47E0
         auto& ctx = *static_cast<Context*>(data);
         if (ctx.name == GetFrameNodeName(RpAtomicGetFrame(a))) {
             ctx.atomic = a;
+            return nullptr; // Stop at the first match
         }
         return a;
-    }, &c);
+    };
+    RpClumpForAllAtomics(clump, FindAtomicCB, &c);
     return c.atomic;
 }
 
