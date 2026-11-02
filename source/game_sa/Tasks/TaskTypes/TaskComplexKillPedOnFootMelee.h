@@ -31,7 +31,7 @@ public:
 
     void   CalculateSearchPositionAndRanges(CPed* ped);
     CTask* CreateSubTask(eTaskType taskType, CPed * ped);
-    bool   IsTargetInRange(CPed* ped, float range); // NOTSA
+    float  GetTargetDistSq(CPed* ped); // NOTSA - Updates the target's position and the ranges first
 
     CTask*    Clone() const override { return new CTaskComplexKillPedOnFootMelee{ *this }; }
     eTaskType GetTaskType() const override { return Type; }

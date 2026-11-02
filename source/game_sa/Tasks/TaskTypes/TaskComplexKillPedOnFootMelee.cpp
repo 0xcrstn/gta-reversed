@@ -69,6 +69,7 @@ CTask* CTaskComplexKillPedOnFootMelee::CreateSubTask(eTaskType taskType, CPed* p
         };
     }
     case TASK_COMPLEX_SEEK_ENTITY:
+        m_pauseTimer = -1;
         return new CTaskComplexSeekEntity<CEntitySeekPosCalculatorStandard>{
             m_target,
             50'000,
@@ -84,25 +85,28 @@ CTask* CTaskComplexKillPedOnFootMelee::CreateSubTask(eTaskType taskType, CPed* p
         if (m_pauseTimer == -1) {
             m_pauseTimer = (int32)CTimer::GetTimeInMS();
         }
-        return new CTaskSimplePause{};
+        return new CTaskSimplePause{ 100 }; // 0x626C9A
     }
     case TASK_SIMPLE_STAND_STILL:
+        m_pauseTimer = -1;
         return new CTaskSimpleStandStill{2000};
     case TASK_COMPLEX_SEQUENCE:
+        m_pauseTimer = -1;
         return new CTaskComplexSequence{
             new CTaskComplexTurnToFaceEntityOrCoord{m_target},
             new CTaskSimpleShakeFist{}
         };
     case TASK_FINISHED:
+        m_pauseTimer = -1;
         return nullptr;
     default:
         NOTSA_UNREACHABLE();
     }
 }
 
-bool CTaskComplexKillPedOnFootMelee::IsTargetInRange(CPed* ped, float range) {
+float CTaskComplexKillPedOnFootMelee::GetTargetDistSq(CPed* ped) {
     CalculateSearchPositionAndRanges(ped);
-    return sq(range) <= (ped->GetPosition() - m_targetPos).SquaredMagnitude();
+    return (ped->GetPosition() - m_targetPos).SquaredMagnitude();
 }
 
 // 0x62BC10
@@ -117,10 +121,10 @@ CTask* CTaskComplexKillPedOnFootMelee::CreateNextSubTask(CPed* ped) {
     case TASK_SIMPLE_STAND_STILL:
     case TASK_COMPLEX_SEQUENCE: // 0x62BC4A
         return m_target->physicalFlags.bSubmergedInWater
-            ? CreateFirstSubTask(ped)
-            : Create(TASK_SIMPLE_STAND_STILL);
+            ? Create(TASK_SIMPLE_STAND_STILL)
+            : CreateFirstSubTask(ped);
     case TASK_SIMPLE_PAUSE: { // 0x62BC98
-        if (!IsTargetInRange(ped, m_arriveRange)) {
+        if (const auto distSq = GetTargetDistSq(ped); distSq <= sq(m_arriveRange)) {
             return Create(TASK_SIMPLE_FIGHT_CTRL);
         }
         if (!ped->bStayInSamePlace) {
@@ -139,8 +143,9 @@ CTask* CTaskComplexKillPedOnFootMelee::CreateNextSubTask(CPed* ped) {
         if (ped->bStayInSamePlace) {
             return Create(TASK_SIMPLE_PAUSE);
         }
+        const auto distSq = GetTargetDistSq(ped);
         return Create(
-            IsTargetInRange(ped, m_arriveRange)
+            distSq > sq(m_arriveRange)
                 ? TASK_COMPLEX_SEEK_ENTITY
                 : TASK_SIMPLE_PAUSE
         );
@@ -158,13 +163,14 @@ CTask* CTaskComplexKillPedOnFootMelee::CreateFirstSubTask(CPed* ped) {
         return nullptr;
     }
     return CreateSubTask([this, ped] {
-        if (!IsTargetInRange(ped, m_arriveRange)) {
+        if (const auto distSq = GetTargetDistSq(ped); distSq <= sq(m_arriveRange)) { // 0x62BE76 - Uses the updated range
             return TASK_SIMPLE_FIGHT_CTRL;
         }
         return ped->bStayInSamePlace
             ? TASK_SIMPLE_PAUSE
             : TASK_COMPLEX_SEEK_ENTITY;
-    }(), ped);
+    }(),
+                         ped);
 }
 
 // 0x626D90
@@ -186,6 +192,7 @@ CTask* CTaskComplexKillPedOnFootMelee::ControlSubTask(CPed* ped) {
     };
 
     switch (m_pSubTask->GetTaskType()) {
+    case TASK_SIMPLE_STAND_STILL:
     case TASK_COMPLEX_SEQUENCE: { // 0x626dfe
         return m_target->physicalFlags.bSubmergedInWater
             ? m_pSubTask
@@ -196,7 +203,7 @@ CTask* CTaskComplexKillPedOnFootMelee::ControlSubTask(CPed* ped) {
         if (m_target->physicalFlags.bSubmergedInWater) {
             return TryAbortAndCreate(TASK_COMPLEX_SEQUENCE);
         }
-        if (IsTargetInRange(ped, m_arriveRange)) {
+        if (const auto distSq = GetTargetDistSq(ped); distSq >= sq(m_arriveRange)) {
             return m_pSubTask;
         }
         return TryAbortAndCreate(TASK_SIMPLE_FIGHT_CTRL);
@@ -205,7 +212,7 @@ CTask* CTaskComplexKillPedOnFootMelee::ControlSubTask(CPed* ped) {
         if (m_target->physicalFlags.bSubmergedInWater) {
             return TryAbortAndCreate(TASK_COMPLEX_SEQUENCE);
         }
-        if (!IsTargetInRange(ped, m_attackRange)) {
+        if (const auto distSq = GetTargetDistSq(ped); distSq <= sq(m_attackRange)) {
             return m_pSubTask;
         }
         return TryAbortAndCreate(
