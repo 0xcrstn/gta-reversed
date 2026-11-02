@@ -1485,6 +1485,7 @@ void InjectHooksMain() {
     CSearchLight::InjectHooks();
     CVehicleSaveStructure::InjectHooks();
     CConversationForPed::InjectHooks();
+    CConversationNode::InjectHooks();
     CPedToPlayerConversations::InjectHooks();
     CDecision::InjectHooks();
     CTaskComplexUseSequence::InjectHooks();
