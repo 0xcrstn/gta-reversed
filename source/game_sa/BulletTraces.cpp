@@ -52,8 +52,8 @@ void PlayFrontEndSoundForTrace(CVector fromWorldSpace, CVector toWorldSpace) {
 
     const float toCSY = DotProduct(toRelToCam, camMat.GetForward());
 
-    if (std::signbit(toCSY) == std::signbit(fromCSY)) { // Originally: toCSY * fromCSY < 0.0f - Check if signs differ
-        return; // Both points are either in front or behind us
+    if (!(toCSY * fromCSY < 0.0f)) { // 0x723A79 - Both points are either in front or behind us (or one is on the camera's plane)
+        return;
     }
 
     // They do, in this case points are on opposite sides (one behind, one in front of the camera)
@@ -83,15 +83,16 @@ void PlayFrontEndSoundForTrace(CVector fromWorldSpace, CVector toWorldSpace) {
 
     const auto ReportBulletAudio = [&](auto event) {
         const float volDistFactor = 1.0f - camToLineDist * 0.5f;
-        const float volumeChange  = volDistFactor == 0.0f ? VOLUME_SILENCE : std::log10(volDistFactor);
+        const float volumeChange  = volDistFactor == 0.0f ? VOLUME_SILENCE : 20.0f * std::log10(volDistFactor); // 0x723B5C, 0x723BB9
         AudioEngine.ReportFrontendAudioEvent(event, volumeChange, 1.0f);
     };
 
     const bool isComingFromBehind = fromCSY <= 0.0f; // Is the bullet coming from behind us?
-    if (0.f <= pointOnLineX) { // Is bullet passing on the right of the camera?
-        ReportBulletAudio(isComingFromBehind ? AE_FRONTEND_BULLET_PASS_RIGHT_REAR : AE_FRONTEND_BULLET_PASS_RIGHT_FRONT);
-    } else { // Bullet passing on left of the camera.
+    // 0x723B20..0x723BF7: The original plays the `LEFT` events when `X >= 0` and the `RIGHT` events otherwise
+    if (0.f <= pointOnLineX) {
         ReportBulletAudio(isComingFromBehind ? AE_FRONTEND_BULLET_PASS_LEFT_REAR : AE_FRONTEND_BULLET_PASS_LEFT_FRONT);
+    } else {
+        ReportBulletAudio(isComingFromBehind ? AE_FRONTEND_BULLET_PASS_RIGHT_REAR : AE_FRONTEND_BULLET_PASS_RIGHT_FRONT);
     }
 }
 
