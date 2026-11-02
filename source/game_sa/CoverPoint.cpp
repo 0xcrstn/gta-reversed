@@ -35,14 +35,23 @@ bool CCoverPoint::CanAccommodateAnotherPed() const noexcept {
 
 // 0x698EF0
 void CCoverPoint::ReleaseCoverPointForPed(CPed* ped) {
-    rng::fill(m_CoveredPeds, nullptr);
+    for (auto& coveredPed : m_CoveredPeds) {
+        if (coveredPed.Get() == ped) {
+            coveredPed = nullptr;
+        }
+    }
 }
 
 // 0x698EB0
 void CCoverPoint::ReserveCoverPointForPed(CPed* ped) {
-    const auto it = rng::find(m_CoveredPeds, nullptr);
-    if (it != m_CoveredPeds.end()) {
-        *it = ped;
+    for (auto& coveredPed : m_CoveredPeds) {
+        if (coveredPed.Get() == ped) {
+            return; // Already reserved for this ped
+        }
+        if (!coveredPed.Get()) {
+            coveredPed = ped;
+            return;
+        }
     }
 }
 
