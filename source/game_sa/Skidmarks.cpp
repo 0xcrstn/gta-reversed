@@ -87,16 +87,19 @@ void CSkidmarks::RegisterOne(uint32 index, const CVector& posn, float dirX, floa
         markById->RegisterNewPart(posn, { dirX, dirY }, length, bloodState);
     } else if (CSkidmark* mark = GetNextFree(true)) {
         mark->Init(index, posn, type, bloodState);
+    } else {
+        *bloodState = false; // 0x720EA9: No skidmark could be freed
     }
 }
 
 // 0x720EC0
 // unused
 void CSkidmarks::RegisterOne(uint32 index, const CVector& posn, float dirX, float dirY, bool* isSandy, bool* bloodState, float length) {
-    if (bloodState)
+    if (*bloodState) {
         RegisterOne(index, posn, dirX, dirY, eSkidmarkType::BLOODY, bloodState, length);
-    else
-        RegisterOne(index, posn, dirX, dirY, isSandy ? eSkidmarkType::SANDY : eSkidmarkType::DEFAULT, bloodState, length);
+    } else {
+        RegisterOne(index, posn, dirX, dirY, *isSandy ? eSkidmarkType::SANDY : eSkidmarkType::DEFAULT, bloodState, length);
+    }
 }
 
 // NOTSA
