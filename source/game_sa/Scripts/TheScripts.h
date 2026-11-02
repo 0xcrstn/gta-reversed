@@ -537,7 +537,6 @@ public:
     static void RenderAllSearchLights();
     static bool ScriptAttachAnimGroupToCharModel(int32 modelId, const char* ifpName);
     static void ScriptConnectLodsFunction(int32 objectHandle1, int32 objectHandle2);
-    static void ScriptDebugCircle2D(float x, float y, float width, float height, CRGBA color);
     static CRunningScript* StartNewScript(uint8* startIP);
     static CRunningScript* StartNewScript(uint8* startIP, uint16 index);
     static void StartTestScript();
@@ -550,6 +549,7 @@ public:
     static bool HasVehicleModelBeenBlockedByScript(eModelID carModelId);
 
     // DEBUG
+    static void ScriptDebugCircle2D(float x, float y, float width, float height, uint32 color);
     static void ScriptDebugLine3D(const CVector& start, const CVector& end, uint32 color1, uint32 color2);
     static void RenderTheScriptDebugLines();
 
