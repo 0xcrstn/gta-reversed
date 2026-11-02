@@ -158,7 +158,9 @@ void CEntity::Add(const CRect& rect) {
     if (usedRect.bottom < -3000.0F) {
         usedRect.bottom = -3000.0F;
     }
-    if (usedRect.top >= 3000.0F) {
+    // BUG: The original clamps `top` only if it's strictly above 3000 (unlike `right`): a `top` of exactly 3000
+    // gives LOD sector row 30, which is out of bounds (lands on `CWorld::ms_listMovingEntityPtrs`)
+    if (notsa::bugfixes::GenericOOB ? usedRect.top >= 3000.0F : usedRect.top > 3000.0F) {
         usedRect.top = 2999.0F;
     }
 
@@ -175,12 +177,13 @@ void CEntity::Add(const CRect& rect) {
             const auto  ProcessAddItem = [this]<typename PtrListType>(PtrListType& list) {
                 list.AddItem(static_cast<typename PtrListType::ItemType>(this)); // TODO: notsa::cast
             };
-            switch (GetType()) {
+            switch (const auto type = GetType()) {
             case ENTITY_TYPE_DUMMY:    ProcessAddItem(s.Dummies); break;
             case ENTITY_TYPE_VEHICLE:  ProcessAddItem(rs.Vehicles); break;
             case ENTITY_TYPE_PED:      ProcessAddItem(rs.Peds); break;
             case ENTITY_TYPE_OBJECT:   ProcessAddItem(rs.Objects); break;
             case ENTITY_TYPE_BUILDING: ProcessAddItem(s.Buildings); break;
+            default:                   NOTSA_UNREACHABLE_CASE(type); // The original adds to a garbage list pointer
             }
             return true;
         });
@@ -200,7 +203,8 @@ void CEntity::Remove() {
     if (usedRect.bottom < -3000.0F) {
         usedRect.bottom = -3000.0F;
     }
-    if (usedRect.top >= 3000.0F) {
+    // BUG: Same as in `Add`, a `top` of exactly 3000 isn't clamped by the original
+    if (notsa::bugfixes::GenericOOB ? usedRect.top >= 3000.0F : usedRect.top > 3000.0F) {
         usedRect.top = 2999.0F;
     }
 
@@ -217,12 +221,13 @@ void CEntity::Remove() {
             const auto  ProcessDeleteItem = [this]<typename PtrListType>(PtrListType& list) {
                 list.DeleteItem(static_cast<typename PtrListType::ItemType>(this)); // TODO: notsa::cast
             };
-            switch (GetType()) {
+            switch (const auto type = GetType()) {
             case ENTITY_TYPE_DUMMY:    ProcessDeleteItem(s.Dummies); break;
             case ENTITY_TYPE_VEHICLE:  ProcessDeleteItem(rs.Vehicles); break;
             case ENTITY_TYPE_PED:      ProcessDeleteItem(rs.Peds); break;
             case ENTITY_TYPE_OBJECT:   ProcessDeleteItem(rs.Objects); break;
             case ENTITY_TYPE_BUILDING: ProcessDeleteItem(s.Buildings); break;
+            default:                   NOTSA_UNREACHABLE_CASE(type); // The original deletes from a garbage list pointer
             }
             return true;
         });
