@@ -66,7 +66,7 @@ private:
     }
 
     CVector                      GetAimTargetPosition(CPed* ped) const;
-    std::pair<CVector, eBoneTag> GetAimLookAtInfo() const;
+    std::pair<CVector, eBoneTag> GetAimLookAtInfo(const CPed* shooter) const;
 
 public:
     bool                   m_IsFinished{};
