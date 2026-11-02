@@ -100,6 +100,16 @@ void CPlayerPedData::SetInitialState() {
     m_nPadUpPressedInMilliseconds = 0;
     m_bPlayersGangActive = true;
     m_nWetness = 0;
+
+    // 0x56F22E, 0x56F2D3
+    m_bStoppedMoving                  = false;
+    m_bAdrenaline                     = false;
+    m_bHaveTargetSelected             = false;
+    m_bFreeAiming                     = false;
+    m_bJustBeenSnacking               = false;
+    m_bRequireHandleBreath            = false;
+    m_bInVehicleDontAllowWeaponChange = false;
+
     m_fTimeCanRun = CStats::GetFatAndMuscleModifier(STAT_MOD_TIME_CAN_RUN);
     m_fMoveSpeed = 0.0f;
     m_fBreath = CStats::GetFatAndMuscleModifier(STAT_MOD_AIR_IN_LUNG);
