@@ -115,12 +115,11 @@ bool CTrafficLights::ShouldCarStopForBridge(CVehicle* vehicle) {
         return false;
 
     auto& curNodeInfo = vehicle->m_autoPilot.m_nCurrentPathNodeInfo;
-    if (!curNodeInfo.IsValid() || ThePaths.m_pPathNodes[curNodeInfo.m_wAreaId])
+    if (!curNodeInfo.IsValid() || !ThePaths.m_pPathNodes[curNodeInfo.m_wAreaId]) {
         return false;
+    }
 
-    if (ThePaths.GetCarPathLink(nextNodeInfo).m_bridgeLights &&
-        ThePaths.GetCarPathLink(curNodeInfo).m_bridgeLights
-    ) {
+    if (ThePaths.GetCarPathLink(nextNodeInfo).m_bridgeLights && !ThePaths.GetCarPathLink(curNodeInfo).m_bridgeLights) {
         return true;
     }
     return false;
