@@ -1475,7 +1475,7 @@ void CEventHandler::ComputeHighAngerAtPlayerResponse(CEventHighAngerAtPlayer* e,
         case TASK_SIMPLE_DUCK_FOREVER:
             return new CTaskSimpleDuck{DUCK_STANDALONE, 0xE0FFu, -1};
         default:
-            NOTSA_UNREACHABLE();
+            return nullptr;
         }
     }();
 }
@@ -1508,7 +1508,7 @@ void CEventHandler::ComputeLowAngerAtPlayerResponse(CEventLowAngerAtPlayer* e, C
         case TASK_SIMPLE_DUCK_FOREVER:
             return new CTaskSimpleDuck{DUCK_STANDALONE, 0xE0FFu, -1};
         default:
-            NOTSA_UNREACHABLE();
+            return nullptr;
         }
     }();
 }
@@ -1522,7 +1522,7 @@ void CEventHandler::ComputeLowHealthResponse(CEventHealthLow* e, CTask* tactive,
         case TASK_NONE:
             return nullptr;
         default:
-            NOTSA_UNREACHABLE();
+            return nullptr;
         }
     }();
 }
@@ -1670,7 +1670,7 @@ void CEventHandler::ComputePedFriendResponse(CEventAcquaintancePed* e, CTask* ta
         case TASK_NONE:
             return nullptr;
         default:
-            NOTSA_UNREACHABLE();
+            return nullptr;
         }
     }();
 }
@@ -1687,7 +1687,7 @@ void CEventHandler::ComputePedSoundQuietResponse(CEventSoundQuiet* e, CTask* tac
         case TASK_COMPLEX_INVESTIGATE_DISTURBANCE:
             return new CTaskComplexInvestigateDisturbance{e->m_position, e->GetSourceEntity()};
         default:
-            NOTSA_UNREACHABLE();
+            return nullptr;
         }
     }();
 }
@@ -1704,7 +1704,7 @@ void CEventHandler::ComputePedThreatBadlyLitResponse(CEventAcquaintancePedHateBa
         case TASK_COMPLEX_INVESTIGATE_DISTURBANCE:
             return new CTaskComplexInvestigateDisturbance{e->m_point, e->m_AcquaintancePed};
         default:
-            NOTSA_UNREACHABLE();
+            return nullptr;
         }
     }();
 }
@@ -2125,7 +2125,7 @@ void CEventHandler::ComputePotentialWalkIntoFireResponse(CEventPotentialWalkInto
         case TASK_NONE:
             return nullptr;
         default:
-            NOTSA_UNREACHABLE();
+            return nullptr;
         }
     }();
 }
@@ -2139,7 +2139,7 @@ void CEventHandler::ComputeReallyLowHealthResponse(CEventHealthReallyLow* e, CTa
         case TASK_NONE:
             return nullptr;
         default:
-            NOTSA_UNREACHABLE();
+            return nullptr;
         }
     }();    
 }
@@ -2202,14 +2202,14 @@ void CEventHandler::ComputeSeenCopResponse(CEventSeenCop* e, CTask* tactive, CTa
             return nullptr;
         }
         switch (e->m_TaskId) {
-        case TASK_FINISHED:
+        case TASK_NONE:
             return nullptr;
         case TASK_COMPLEX_SMART_FLEE_ENTITY:
             return new CTaskComplexSmartFleeEntity{ e->m_AcquaintancePed, false, 60.f };
         case TASK_COMPLEX_KILL_PED_ON_FOOT:
             return new CTaskComplexKillPedOnFoot{ e->m_AcquaintancePed };
         default:
-            NOTSA_UNREACHABLE(); // Not sure
+            return nullptr;
         }
     }();
 }
@@ -2254,7 +2254,7 @@ void CEventHandler::ComputeSexyPedResponse(CEventSexyPed* e, CTask* tactive, CTa
         case TASK_COMPLEX_GANG_HASSLE_PED:
             return new CTaskGangHasslePed{ e->m_SexyPed, 0, 10'000, 30'000 };
         default:
-            NOTSA_UNREACHABLE(); // Not sure
+            return nullptr;
         }
     }();
 }
@@ -2418,8 +2418,11 @@ void CEventHandler::ComputeSpecialResponse(CEventSpecial* e, CTask* tactive, CTa
             }
             return nullptr;
         }
+        case TASK_NONE:
+        case TASK_COMPLEX_KILL_CRIMINAL: // 0x4BBB22
+            return nullptr;
         default:
-            NOTSA_UNREACHABLE(); // not sure
+            return nullptr;
         }
     }();
 }
