@@ -507,6 +507,10 @@ void CGameLogic::SetUpSkip(CVector coors, float angle, bool afterMission, CEntit
     SkipPosition = coors;
     SkipState = afterMission ? SKIP_AFTER_MISSION : SKIP_AVAILABLE;
     SkipTimer = CTimer::GetTimeInMS();
+
+    // `SkipVehicle` is set even if `vehicle` is null
+    SkipHeading = angle;
+    SkipVehicle = static_cast<CVehicle*>(vehicle);
     if (vehicle) {
         CEntity::RegisterReference(SkipVehicle);
     }
