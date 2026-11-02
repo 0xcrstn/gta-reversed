@@ -111,7 +111,7 @@ public:
     void ComputeGunAimedAtResponse(CEventGunAimedAt* e, CTask* tactive, CTask* tsimplest);
     void ComputeHighAngerAtPlayerResponse(CEventHighAngerAtPlayer* e, CTask* tactive, CTask* tsimplest);
     void ComputeInWaterResponse(CEventInWater* e, CTask* tactive, CTask* tsimplest);
-    void ComputeInteriorUseInfoResponse(CEventInteriorUseInfo* e, CTaskInteriorUseInfo* tactive, CTask* tsimplest);
+    void ComputeInteriorUseInfoResponse(CEventInteriorUseInfo* e, CTask* tactive, CTask* tsimplest);
     void ComputeKnockOffBikeResponse(CEvent* e, CTask* tactive, CTask* tsimplest);
     void ComputeLowAngerAtPlayerResponse(CEventLowAngerAtPlayer* e, CTask* tactive, CTask* tsimplest);
     void ComputeLowHealthResponse(CEventHealthLow* e, CTask* tactive, CTask* tsimplest);
