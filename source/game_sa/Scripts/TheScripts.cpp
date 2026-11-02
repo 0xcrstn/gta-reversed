@@ -90,7 +90,7 @@ void CTheScripts::InjectHooks() {
     // RH_ScopedInstall(DrawDebugCube, 0x0);
     // RH_ScopedInstall(DrawDebugAngledCube, 0x0)
     RH_ScopedInstall(DrawScriptSpritesAndRectangles, 0x464980);
-    RH_ScopedInstall(ScriptDebugCircle2D, 0x485C20, { .Reversed = false });
+    RH_ScopedInstall(ScriptDebugCircle2D, 0x485C20);
     RH_ScopedInstall(DrawScriptSpheres, 0x4810E0);
     RH_ScopedOverloadedInstall(HighlightImportantArea, "", 0x485E00, void(*)(uint32,float,float,float,float,float));
     RH_ScopedInstall(HighlightImportantAngledArea, 0x485EF0);
@@ -1812,10 +1812,7 @@ void CTheScripts::DrawScriptSpritesAndRectangles(bool drawBeforeFade) {
 //   const auto pos = FindPlayerPed()->GetPosition() + CVector{ 0.0f, 0.f, 1.0f };
 //   CTheScripts::ScriptDebugCircle2D(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 100, 50.f, 50.f, HudColour.GetRGB(HUD_COLOUR_RED).ToInt());
 // 0x485C20
-void CTheScripts::ScriptDebugCircle2D(float x, float y, float width, float height, CRGBA color) {
-    return plugin::Call<0x485C20, float, float, float, float, CRGBA>(x, y, width, height, color);
-
-    // untested
+void CTheScripts::ScriptDebugCircle2D(float x, float y, float width, float height, uint32 color) {
     RwRenderStateSet(rwRENDERSTATEZWRITEENABLE,      RWRSTATE(TRUE));
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE,       RWRSTATE(FALSE));
     RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, RWRSTATE(TRUE));
@@ -1824,19 +1821,21 @@ void CTheScripts::ScriptDebugCircle2D(float x, float y, float width, float heigh
     RwRenderStateSet(rwRENDERSTATETEXTUREFILTER,     RWRSTATE(rwFILTERLINEAR));
     RwRenderStateSet(rwRENDERSTATETEXTURERASTER,     RWRSTATE(NULL));
 
-    const auto iters = 16;
-    auto part = (CTimer::GetTimeInMS() >> 6) % iters;
-    for (auto i = 0; i < iters; i++) {
-        RwIm2DVertex vertex{
-            .x = std::sin((float)i * PI / 8.0f) * width + x,
-            .y = std::cos((float)i * PI / 8.0f) * height + y
+    const CRGBA rgba{ color }; // Packed RGBA
+
+    const auto iters = 16u;
+    const auto part  = (CTimer::GetTimeInMS() >> 6) % iters; // This segment is drawn at 3/4 intensity
+    for (auto i = 0u; i < iters; i++) {
+        const auto emissiveColor = (i == part ? rgba * 0.75f : rgba).ToIntARGB();
+        const auto MakeVertex    = [&](uint32 n) {
+            return RwIm2DVertex{
+                .x             = std::sin((float)n * PI / 8.0f) * width + x,
+                .y             = std::cos((float)n * PI / 8.0f) * height + y,
+                .emissiveColor = emissiveColor,
+            };
         };
-        if (part == i)
-            vertex.emissiveColor = (3 * color.g / 4) | (((3 * color.b / 4) | (((3 * color.a / 4) | ((3 * color.r / 4) << 8)) << 8)) << 8); // todo: (3 * color / 4).ToIntARGB();
-        else
-            vertex.emissiveColor = color.ToIntARGB();
-        RwIm2DVertex vertices[2] = { vertex, vertex };
-        RwIm2DRenderLine(vertices, std::size(vertices), 0, 1); // todo: RwIm2DRenderLine_BUGFIX
+        RwIm2DVertex vertices[2] = { MakeVertex(i), MakeVertex(i + 1) };
+        RwIm2DRenderLine(vertices, std::size(vertices), 0, 1);
     }
 
     RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, RWRSTATE(FALSE));
