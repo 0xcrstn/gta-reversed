@@ -781,6 +781,7 @@ void CEventHandler::ComputeChatPartnerResponse(CEventChatPartner* e, CTask* tact
         if (!e->m_partner || m_Ped->GetTaskManager().Has<CTaskComplexPartnerChat>(false)) {
             return nullptr;
         }
+        CGeneral::GetRandomNumberInRange(3, 7); // 0x4B9938 - The result is unused, but it advances the `rand()` sequence
         return new CTaskComplexPartnerChat{
             "EventChatPartnerResponse",
             e->m_partner,
