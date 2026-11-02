@@ -20,7 +20,7 @@ void CStencilShadows::InjectHooks() {
     RH_ScopedInstall(RenderStencilShadows, 0x7113B0);
     RH_ScopedInstall(RenderForVehicle, 0x70FAE0, {.Reversed = false});
     RH_ScopedInstall(RenderForObject, 0x710310, {.Reversed = false});
-    RH_ScopedInstall(Render, 0x710D50, {.Reversed = false});
+    RH_ScopedInstall(Render, 0x710D50);
     RH_ScopedInstall(RenderBuffer, 0x710B50);
     RH_ScopedInstall(SunSetPositionFromEntity, 0x710AF0);
     RH_ScopedInstall(sub_710CC0, 0x710CC0);
@@ -58,40 +58,47 @@ void CStencilShadows::Shutdown() {
 
 // 0x710D50
 void CStencilShadows::Render(const CRGBA& color) {
-    plugin::Call<0x710D50>();
-
-    /*
     uiTempBufferIndicesStored = 0;
     uiTempBufferVerticesStored = 0;
 
-    const auto intColor = color.ToInt();
-    for (auto* shadow = pFirstActiveStencilShadowObject; shadow; shadow = shadow->m_pNext) {
-        auto*      facePts  = shadow->m_ShadowFacesData;
-        const auto numFaces = shadow->m_SizeOfShadowFacesData / sizeof(*facePts);
-         
-        for (auto face = 0u; face < numFaces; face++, facePts += 6) {
-            auto points = std::span{ facePts, 6 };
+    // Stores whole triangles, rendering out the buffer first if they don't fit
+    const auto StorePoints = [&color](const CVector* points, int32 numPoints) {
+        sub_710CC0(numPoints, numPoints);
 
-            sub_710CC0(6, 6);
+        const auto nextVert = std::exchange(uiTempBufferVerticesStored, uiTempBufferVerticesStored + numPoints);
+        const auto nextIdx  = std::exchange(uiTempBufferIndicesStored, uiTempBufferIndicesStored + numPoints);
+        for (auto i = 0; i < numPoints; i++) {
+            auto* const vert = &TempBufferVertices.m_3d[nextVert + i];
+            RwIm3DVertexSetPos(vert, points[i].x, points[i].y, points[i].z);
+            RwIm3DVertexSetRGBA(vert, color.r, color.g, color.b, color.a);
 
-            auto nextVert = std::exchange(uiTempBufferVerticesStored, uiTempBufferVerticesStored + 6);
-            auto nextIdx  = std::exchange(uiTempBufferIndicesStored, uiTempBufferIndicesStored + 6);
-            for (auto i = 0; i < 6; i++) {
-                auto& vert     = TempBufferVertices.m_3d[nextVert + i];
-                vert.objVertex = points[0];
-                vert.color     = intColor;
-
-                aTempBufferIndices[nextIdx + i] = nextIdx + i;
-            }
+            aTempBufferIndices[nextIdx + i] = (RxVertexIndex)(nextIdx + i);
         }
+    };
 
-        // what the fuck?
-        // TODO: maybe this just boils down to size > 0 && size % 2 == 0
-        const auto v14 = (0x55555556ull * shadow->m_SizeOfShadowFacesData) >> 32;
-        if (((v14 & 0x80000000) != 0) + (v14 & 1) != 0) {
+    for (auto* shadow = pFirstActiveStencilShadowObject; shadow; shadow = shadow->m_pNext) {
+        // `m_SizeOfShadowFacesData` is the number of points, 3 per triangle.
+        // They're stored 2 triangles at a time, then the odd one out (if any).
+        const auto numPoints = shadow->m_SizeOfShadowFacesData;
+        auto*      points    = shadow->m_ShadowFacesData;
+        for (auto i = 0u; i < numPoints / 6; i++, points += 6) {
+            StorePoints(points, 6);
+        }
+        if ((numPoints / 3) % 2 != 0) {
+            StorePoints(points, 3);
         }
     }
-    */
+
+    if (uiTempBufferIndicesStored && uiTempBufferVerticesStored) {
+        RwRenderStateSet(rwRENDERSTATETEXTURERASTER, RWRSTATE(NULL));
+        LittleTest();
+        if (RwIm3DTransform(TempBufferVertices.m_3d, uiTempBufferVerticesStored, nullptr, rwIM3D_VERTEXXYZ | rwIM3D_VERTEXRGBA)) {
+            RwIm3DRenderIndexedPrimitive(rwPRIMTYPETRILIST, aTempBufferIndices, uiTempBufferIndicesStored);
+            RwIm3DEnd();
+        }
+        uiTempBufferVerticesStored = 0;
+        uiTempBufferIndicesStored  = 0;
+    }
 }
 
 // unused
