@@ -960,8 +960,18 @@ void CAEWeaponAudioEntity::UpdateParameters(CAESound* sound, int16 curPlayPos) {
     }
 }
 
+// NOTSA: The stores of `Reset` (0x5034A0). Neither the base class nor the minigun and chainsaw states are touched.
 void CAEWeaponAudioEntity::Clear() {
-    *this = CAEWeaponAudioEntity{};
+    m_LastFlameThrowerFireTimeMs    = 0;
+    m_LastSprayCanFireTimeMs        = 0;
+    m_LastFireExtFireTimeMs         = 0;
+    m_FlameThrowerIdleGasLoopSound  = nullptr;
+    m_LastWeaponPlaneFrequencyIndex = 0;
+    m_LastMiniGunFireTimeMs         = 0;
+    m_IsMiniGunSpinActive           = false;
+    m_IsMiniGunFireActive           = false;
+    m_LastChainsawEventTimeMs       = 0;
+    m_LastGunFireTimeMs             = 0;
 }
 
 CAEWeaponAudioEntity* CAEWeaponAudioEntity::Constructor() {
