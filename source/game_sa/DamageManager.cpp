@@ -226,7 +226,7 @@ uint32 CDamageManager::GetEngineStatus() {
 
 // 0x6C22A0
 void CDamageManager::SetEngineStatus(uint32 status) {
-    m_nEngineStatus = std::min<uint8>(status, 250u);
+    m_nEngineStatus = static_cast<uint8>(std::min(status, 250u));
 }
 
 // 0x6C26A0
