@@ -336,7 +336,7 @@ CCoverPoint::Dir CCover::FindDirFromVector(CVector dir) {
 
 // 0x698D60
 CVector CCover::FindVectorFromDir(CCoverPoint::Dir direction) {
-    return CVector{ std::sin(direction), std::cos(direction), 0.f };
+    return CVector{ -std::sin(direction), std::cos(direction), 0.f }; // Inverse of `atan2(-x, y)` (See `FindDirFromVector`)
 }
 
 // unused
