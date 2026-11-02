@@ -116,7 +116,7 @@ void CEventKnockOffBike::From(const CEventKnockOffBike& right)
     m_time = right.m_time;
     m_ped = right.m_ped;
     m_isVictimDriver = right.m_isVictimDriver;
-    m_forceKnockOff = right.m_forceKnockOff;
+    // `m_forceKnockOff` isn't copied, it keeps its value (0x4AFE33..0x4AFE46)
     m_exitDoor = right.m_exitDoor;
     CEntity::SafeRegisterRef(m_vehicle);
     CEntity::SafeRegisterRef(m_ped);
@@ -199,8 +199,8 @@ int32 CEventKnockOffBike::CalcForcesAndAnims(CPed* ped)
             ped->ApplyMoveForce(force);
             return ANIM_ID_KO_SPIN_L;
         }
-        default:
-            NOTSA_UNREACHABLE();
+        default: // 0x4B02CC: Any other direction applies no force
+            return ANIM_ID_KO_SHOT_FRONT_0;
         }
         break;
     case KNOCK_OFF_TYPE_SKIDBACKFRONT:
@@ -217,7 +217,8 @@ int32 CEventKnockOffBike::CalcForcesAndAnims(CPed* ped)
             randomNum = 6.0f;
         ped->m_vecMoveSpeed.z += CGeneral::GetRandomNumberInRange(3.0f, randomNum) / 70.0f;
         ped->m_pEntityIgnoredCollision = m_vehicle;
-        int32 animId = ANIM_ID_KO_SKID_BACK;
+        // 0x4B00E9: Used for any other direction
+        int32 animId = ANIM_ID_KO_SHOT_FRONT_0;
         switch (m_knockOffDirection)
         {
         case 0:
@@ -251,7 +252,8 @@ int32 CEventKnockOffBike::CalcForcesAndAnims(CPed* ped)
         force.z = CGeneral::GetRandomNumberInRange(3.0f, 5.0f);
         ped->ApplyMoveForce(force);
         ped->m_pEntityIgnoredCollision = m_vehicle;
-        int32 animId = ANIM_ID_KO_SKID_BACK;
+        // 0x4B0068: Used for any other direction
+        int32 animId = ANIM_ID_KO_SHOT_FRONT_0;
         switch (m_knockOffDirection)
         {
         case 0:
