@@ -34,9 +34,9 @@ void CClothes::InjectHooks() {
 void CClothes::Init() {
     for (int32 part = 0; part < CLOTHES_TEXTURE_TOTAL; part++) {
         eClothesModelPart modelPart = GetTextureDependency(static_cast<eClothesTexturePart>(part));
-        PlayerClothes.m_anTextureKeys[part] = 0;
+        PlayerClothes.m_anTextureKeys[part] = static_cast<uint32>(-1);
         if (modelPart != CLOTHES_MODEL_UNAVAILABLE)
-            PlayerClothes.m_anModelKeys[modelPart] = 0;
+            PlayerClothes.m_anModelKeys[modelPart] = static_cast<uint32>(-1);
     }
     ms_numRuleTags = 0;
     ms_clothesImageId = CStreaming::AddImageToList("MODELS\\PLAYER.IMG", false);
