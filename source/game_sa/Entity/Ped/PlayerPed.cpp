@@ -1029,86 +1029,89 @@ void CPlayerPed::ProcessControl() {
     GetPlayerData()->m_bRequireHandleBreath = true;
     CPed::ProcessControl();
     bCheckColAboveHead = true;
+    if (GetWasPostponed()) { // 0x60EB7C
+        return;
+    }
     float markColor = 1.0f;
     bool limitMarkColor = true;
     CVector effectPos;
     CPad* pad = CPad::GetPad(m_nPedType);
-    if (!bCanPointGunAtTarget) {
-        GetPlayerWanted()->Update();
-        PruneReferences();
-        if (GetActiveWeapon().m_Type == WEAPON_MINIGUN) {
-            auto weaponInfo = CWeaponInfo::GetWeaponInfo(WEAPON_MINIGUN, eWeaponSkill::STD);
-            if (GetIntelligence()->GetTaskUseGun()) {
-                auto animAssoc = GetIntelligence()->GetTaskUseGun()->m_Anim;
-                if (animAssoc && animAssoc->m_CurrentTime - animAssoc->m_TimeStep < weaponInfo->m_fAnimLoopEnd) {
-                    if (GetPlayerData()->m_fGunSpinSpeed < 0.45f) {
-                        GetPlayerData()->m_fGunSpinSpeed += CTimer::GetTimeStep() * 0.025f;
-                        GetPlayerData()->m_fGunSpinSpeed = std::min(GetPlayerData()->m_fGunSpinSpeed, 0.45f);
-                    }
-                    if (pad->GetWeapon(this) && GetActiveWeapon().m_TotalAmmo > 0 && animAssoc->m_CurrentTime >= weaponInfo->m_fAnimLoopStart) 
-                        m_weaponAudio.AddAudioEvent(AE_WEAPON_FIRE_MINIGUN_AMMO);
-                    else 
-                        m_weaponAudio.AddAudioEvent(AE_WEAPON_FIRE_MINIGUN_NO_AMMO);
-                }
+    GetPlayerWanted()->Update();
+    PruneReferences();
+    if (GetActiveWeapon().m_Type == WEAPON_MINIGUN) {
+        auto        weaponInfo = CWeaponInfo::GetWeaponInfo(WEAPON_MINIGUN, eWeaponSkill::STD);
+        auto* const taskUseGun = GetIntelligence()->GetTaskUseGun();
+        auto* const animAssoc  = taskUseGun ? taskUseGun->m_Anim : nullptr;
+        if (animAssoc && animAssoc->m_CurrentTime - animAssoc->m_TimeStep < weaponInfo->m_fAnimLoopEnd) {
+            if (GetPlayerData()->m_fGunSpinSpeed < 0.45f) {
+                GetPlayerData()->m_fGunSpinSpeed += CTimer::GetTimeStep() * 0.025f;
+                GetPlayerData()->m_fGunSpinSpeed = std::min(GetPlayerData()->m_fGunSpinSpeed, 0.45f);
+            }
+            if (pad->GetWeapon(this) && GetActiveWeapon().m_TotalAmmo > 0 && animAssoc->m_CurrentTime >= weaponInfo->m_fAnimLoopStart) {
+                m_weaponAudio.AddAudioEvent(AE_WEAPON_FIRE_MINIGUN_AMMO);
             } else {
-                if (GetPlayerData()->m_fGunSpinSpeed > 0.0f) {
-                    GetPlayerData()->m_fGunSpinSpeed -= CTimer::GetTimeStep() * 0.003f;
-                    GetPlayerData()->m_fGunSpinSpeed = std::max(GetPlayerData()->m_fGunSpinSpeed, 0.0f);
-                }
+                m_weaponAudio.AddAudioEvent(AE_WEAPON_FIRE_MINIGUN_NO_AMMO);
+            }
+        } else { // 0x60EC0B, 0x60EC21, 0x60EC35: No gun task, no anim or the anim is past its loop
+            if (GetPlayerData()->m_fGunSpinSpeed > 0.0f) {
+                GetPlayerData()->m_fGunSpinSpeed -= CTimer::GetTimeStep() * 0.003f;
+                GetPlayerData()->m_fGunSpinSpeed = std::max(GetPlayerData()->m_fGunSpinSpeed, 0.0f);
             }
         }
-        if (GetActiveWeapon().m_Type == WEAPON_CHAINSAW && m_nPedState != PEDSTATE_ATTACK && !bInVehicle) {
-            GetIntelligence()->GetTaskSwim(); // hmmm?
-        }
-        if (m_pTargetedObject) {
-            ClearReference(m_p3rdPersonMouseTarget);
-            if (m_pTargetedObject->GetIsTypePed()) {
-                CPed* targetPed = m_pTargetedObject->AsPed();
-                auto weaponInfo = CWeaponInfo::GetWeaponInfo(GetActiveWeapon().m_Type, GetWeaponSkill());
-                float targetHeadRange = weaponInfo->GetTargetHeadRange();
-                markColor = targetPed->m_fHealth / targetPed->m_fMaxHealth;
-                bool instantFireHit = false;
-                if (targetPed->IsAlive()) {
-                    auto stdWeaponInfo = CWeaponInfo::GetWeaponInfo(GetActiveWeapon().m_Type, eWeaponSkill::STD);
-                    if (stdWeaponInfo->m_nWeaponFire == WEAPON_FIRE_INSTANT_HIT) {
-                        instantFireHit = true;
-                        CVector distance = targetPed->GetPosition() - GetPosition();
-                        if (targetHeadRange * targetHeadRange > distance.SquaredMagnitude()) {
-                            GetPlayerData()->m_nTargetBone = BONE_HEAD;
-                            GetPlayerData()->m_vecTargetBoneOffset.x = 0.05f;
-                        }
+    }
+    if (GetActiveWeapon().m_Type == WEAPON_CHAINSAW && m_nPedState != PEDSTATE_ATTACK && !bInVehicle) {
+        GetIntelligence()->GetTaskSwim(); // hmmm?
+    }
+    if (m_pTargetedObject) {
+        ClearReference(m_p3rdPersonMouseTarget);
+        if (m_pTargetedObject->GetIsTypePed()) {
+            CPed* targetPed       = m_pTargetedObject->AsPed();
+            auto  weaponInfo      = CWeaponInfo::GetWeaponInfo(GetActiveWeapon().m_Type, GetWeaponSkill());
+            float targetHeadRange = weaponInfo->GetTargetHeadRange();
+            markColor             = targetPed->m_fHealth / targetPed->m_fMaxHealth;
+            bool aimAtHead        = false;
+            if (targetPed->IsAlive()) {
+                auto stdWeaponInfo = CWeaponInfo::GetWeaponInfo(GetActiveWeapon().m_Type, eWeaponSkill::STD);
+                if (stdWeaponInfo->m_nWeaponFire == WEAPON_FIRE_INSTANT_HIT) {
+                    CVector distance = targetPed->GetPosition() - GetPosition();
+                    if (targetHeadRange * targetHeadRange > distance.SquaredMagnitude()) {
+                        aimAtHead                                = true;
+                        GetPlayerData()->m_nTargetBone           = BONE_HEAD;
+                        GetPlayerData()->m_vecTargetBoneOffset.x = 0.05f;
                     }
                 }
-                if (!instantFireHit) {
-                    GetPlayerData()->m_nTargetBone = BONE_SPINE1;
-                    GetPlayerData()->m_vecTargetBoneOffset.x = 0.2f;
-                }
-                effectPos = GetPlayerData()->m_vecTargetBoneOffset;
-                targetPed->GetTransformedBonePosition(effectPos, static_cast<eBoneTag>(GetPlayerData()->m_nTargetBone), false);
-                bool targetIsInVehicle = false;
-                if (markColor > 0.0f) {
-                    if (!targetPed->bInVehicle && targetPed->m_nMoveState != PEDMOVE_STILL) {
-                        effectPos += targetPed->m_vecMoveSpeed * CTimer::GetTimeStep();
-                    }
-                }
-                if (targetPed->bInVehicle) {
-                    auto targetVeh = targetPed->m_pVehicle;
-                    if (targetVeh)
-                        effectPos += (targetVeh->m_vecMoveSpeed + targetVeh->m_vecTurnSpeed) * CTimer::GetTimeStep();
-                }
-            } else if (m_pTargetedObject->GetIsTypeVehicle()) {
-                CVehicle* targetVeh = m_pTargetedObject->AsVehicle();
-                effectPos = (targetVeh->m_vecMoveSpeed + targetVeh->m_vecTurnSpeed) * CTimer::GetTimeStep();
-                effectPos += targetVeh->GetPosition();
-            } else if (m_pTargetedObject->GetIsTypeObject()) {
-                CObject* targetObj = m_pTargetedObject->AsObject();
-                effectPos = targetObj->m_vecMoveSpeed * CTimer::GetTimeStep();
-                effectPos += targetObj->GetPosition();
-                markColor = targetObj->m_fHealth * 0.001f;
-            } else {
-                effectPos = m_pTargetedObject->GetPosition();
-                limitMarkColor = false; 
             }
+            if (!aimAtHead) { // 0x60EE65: Also when the target is out of the head range
+                GetPlayerData()->m_nTargetBone           = BONE_SPINE1;
+                GetPlayerData()->m_vecTargetBoneOffset.x = 0.2f;
+            }
+            effectPos = GetPlayerData()->m_vecTargetBoneOffset;
+            targetPed->GetTransformedBonePosition(effectPos, static_cast<eBoneTag>(GetPlayerData()->m_nTargetBone), false);
+            bool targetIsInVehicle = false;
+            if (markColor > 0.0f) {
+                if (!targetPed->bInVehicle && targetPed->m_nMoveState != PEDMOVE_STILL) {
+                    effectPos += targetPed->m_vecMoveSpeed * CTimer::GetTimeStep();
+                }
+            }
+            if (targetPed->bInVehicle) {
+                auto targetVeh = targetPed->m_pVehicle;
+                if (targetVeh) {
+                    effectPos += (targetVeh->m_vecMoveSpeed + targetVeh->m_vecTurnSpeed) * CTimer::GetTimeStep();
+                }
+            }
+        } else if (m_pTargetedObject->GetIsTypeVehicle()) {
+            CVehicle* targetVeh = m_pTargetedObject->AsVehicle();
+            markColor           = targetVeh->GetHealth() * 0.001f; // 0x60EF5D
+            effectPos           = (targetVeh->m_vecMoveSpeed + targetVeh->m_vecTurnSpeed) * CTimer::GetTimeStep();
+            effectPos += targetVeh->GetPosition();
+        } else if (m_pTargetedObject->GetIsTypeObject()) {
+            CObject* targetObj = m_pTargetedObject->AsObject();
+            effectPos          = targetObj->m_vecMoveSpeed * CTimer::GetTimeStep();
+            effectPos += targetObj->GetPosition();
+            markColor = targetObj->m_fHealth * 0.001f;
+        } else {
+            effectPos      = m_pTargetedObject->GetPosition();
+            limitMarkColor = false;
         }
     }
     if (m_pTargetedObject) {
@@ -1181,7 +1184,7 @@ void CPlayerPed::ProcessControl() {
                 }
             }
             SetLookFlag(lookDir, true, false);
-            SetLookTimer(static_cast<uint32>(CTimer::GetTimeStepInMS() * 5.0f));
+            SetLookTimer(static_cast<uint32>(CTimer::GetTimeStepInMS()) * 5); // 0x60F45E: Truncated to whole ms before it's multiplied
         } else {
             ClearLookFlag();
         }
@@ -1190,7 +1193,7 @@ void CPlayerPed::ProcessControl() {
         ClearLookFlag();
         SetLookTimer(250);
     }
-    if (m_vecMoveSpeed.Magnitude() >= 0.1f) {
+    if (m_vecMoveSpeed.Magnitude2D() >= 0.1f) { // 0x60F4C8: Only the 2D speed counts
         GetPlayerData()->m_nStandStillTimer = 0;
         GetPlayerData()->m_bStoppedMoving = false;
     } else if (!GetPlayerData()->m_nStandStillTimer) {
@@ -1221,9 +1224,9 @@ void CPlayerPed::ProcessControl() {
         }
     }
     if (physicalFlags.bSubmergedInWater) {
-        CVector pos = GetPosition();
-        pos.z += 1.5f;
-        if (CWaterLevel::GetWaterLevel(pos.x, pos.y, pos.z, GetPlayerData()->m_fWaterHeight, true, nullptr)) {
+        const CVector pos = GetPosition();
+        // 0x60F62B: Only the water level query is raised, the cover below is calculated from the ped's position
+        if (CWaterLevel::GetWaterLevel(pos.x, pos.y, pos.z + 1.5f, GetPlayerData()->m_fWaterHeight, true, nullptr)) {
             auto& box = CEntity::GetColModel()->GetBoundingBox();
             float playerMinZ = pos.z + box.m_vecMin.z;
             float playerMaxZ = pos.z + box.m_vecMax.z;
