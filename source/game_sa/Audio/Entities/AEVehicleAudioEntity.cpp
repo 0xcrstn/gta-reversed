@@ -324,8 +324,15 @@ eSoundBankSlot CAEVehicleAudioEntity::DemandBankSlot(eSoundBank bankId) {
         return s;
     }
 
-    // Otherwise free up the least used slot
-    const auto slot = rng::min_element(s_DummyEngineSlots, std::less<>{}, &tDummyEngineSlot::RefCnt);
+    // Otherwise free up the first slot that is used less than the first one (or the first one)
+    // 0x4F4E74: Not necessarily the least used slot, the original never updates the count it compares against
+    auto* slot = &s_DummyEngineSlots.front();
+    for (auto& s : s_DummyEngineSlots) {
+        if (s.RefCnt < s_DummyEngineSlots.front().RefCnt) {
+            slot = &s;
+            break;
+        }
+    }
     slot->RefCnt = 0;
 
     // Now this should always return a valid slot
@@ -348,10 +355,16 @@ eSoundBankSlot CAEVehicleAudioEntity::RequestBankSlot(eSoundBank bankId) {
     }
 
     // If not, find a free slot (if any) and initialize it
-    // (NB: I left out the logic for `s_NextDummyEngineSlot`, it's really not necessary...)
-    const auto slot = rng::find_if(s_DummyEngineSlots, [&](auto&& s) {
-        return s.RefCnt < 1;
-    });
+    // 0x4F4D61: The search starts at `s_NextDummyEngineSlot` and wraps around
+    auto slot = std::end(s_DummyEngineSlots);
+    for (auto i = 0u; i < std::size(s_DummyEngineSlots); i++) {
+        const auto idx = (s_NextDummyEngineSlot + i) % std::size(s_DummyEngineSlots);
+        if (s_DummyEngineSlots[idx].RefCnt < 1) {
+            slot                  = std::begin(s_DummyEngineSlots) + idx;
+            s_NextDummyEngineSlot = (int16)((idx + 1) % std::size(s_DummyEngineSlots));
+            break;
+        }
+    }
     if (slot == std::end(s_DummyEngineSlots)) {
         return SND_BANK_SLOT_NONE; // No free slots
     }
