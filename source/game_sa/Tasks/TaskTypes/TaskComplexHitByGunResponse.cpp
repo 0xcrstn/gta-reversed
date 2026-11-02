@@ -28,19 +28,19 @@ CTaskComplexHitByGunResponse::CTaskComplexHitByGunResponse(eDirection hs) :
 }
 
 //! @notsa
+//! Used by `Clone` (0x636640), which copies the whole hit side dword
 CTaskComplexHitByGunResponse::CTaskComplexHitByGunResponse(const CTaskComplexHitByGunResponse& o) :
-    CTaskComplexHitByGunResponse{ o.m_HitSide }
-{
+    m_HitSide{ o.m_HitSide } {
 }
 
 // 0x631E50
 CTask* CTaskComplexHitByGunResponse::CreateFirstSubTask(CPed* ped) {
-    switch (m_HitSide) {
-    case eDirection::FORWARD:  return new CTaskSimpleHitByGunFromFront{};
-    case eDirection::LEFT:     return new CTaskSimpleHitByGunFromLeft{};
-    case eDirection::BACKWARD: return new CTaskSimpleHitByGunFromRear{};
-    case eDirection::RIGHT:    return new CTaskSimpleHitByGunFromRight{};
-    default:                   NOTSA_UNREACHABLE();
+    switch (m_HitSide.get_underlying()) {
+    case +eDirection::FORWARD:  return new CTaskSimpleHitByGunFromFront{};
+    case +eDirection::LEFT:     return new CTaskSimpleHitByGunFromLeft{};
+    case +eDirection::BACKWARD: return new CTaskSimpleHitByGunFromRear{};
+    case +eDirection::RIGHT:    return new CTaskSimpleHitByGunFromRight{};
+    default:                    return nullptr; // The original switches on the whole dword, any other value means no sub-task
     }
 }
 
