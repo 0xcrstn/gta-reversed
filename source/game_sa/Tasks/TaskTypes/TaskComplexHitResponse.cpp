@@ -26,18 +26,19 @@ CTaskComplexHitResponse::CTaskComplexHitResponse(eDirection hs) :
 {
 }
 
+// For 0x6365E0
 CTaskComplexHitResponse::CTaskComplexHitResponse(const CTaskComplexHitResponse& o) :
-    CTaskComplexHitResponse{ o.m_HitSide }
+    m_HitSide{ o.m_HitSide } // The whole dword is copied, not just the `eDirection` byte
 {
 }
 
 // 0x638040
 CTask* CTaskComplexHitResponse::CreateFirstSubTask(CPed* ped) {
-    switch (m_HitSide) {
-    case eDirection::FORWARD:  return new CTaskSimpleHitFromFront{};
-    case eDirection::LEFT:     return new CTaskSimpleHitFromLeft{};
-    case eDirection::BACKWARD: return new CTaskSimpleHitFromBack{};
-    case eDirection::RIGHT:    return new CTaskSimpleHitFromRight{};
-    default:                   NOTSA_UNREACHABLE();
+    switch (m_HitSide.get_underlying()) { // The whole dword, not just the `eDirection` byte
+    case +eDirection::FORWARD:  return new CTaskSimpleHitFromFront{};
+    case +eDirection::LEFT:     return new CTaskSimpleHitFromLeft{};
+    case +eDirection::BACKWARD: return new CTaskSimpleHitFromBack{};
+    case +eDirection::RIGHT:    return new CTaskSimpleHitFromRight{};
+    default:                    return nullptr;
     }
 }
