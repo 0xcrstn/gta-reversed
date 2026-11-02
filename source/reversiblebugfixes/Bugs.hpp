@@ -59,6 +59,11 @@ inline const ReversibleBugFix CCarCtrl_RemoveDistantCars_UseAfterFree{
     .Description = "Fix user-after-free of vehicles (possibly) deleted by PossiblyRemoveVehicle",
     .Credit      = "Pirulax"
 };
+inline const ReversibleBugFix CCamera_TakeControl_ModeFromNewTarget{
+    .Name        = "CCamera::TakeControl - Mode from the new target",
+    .Description = "With `MODE_NONE` the original derives the camera mode from the type of the current target entity (crashing if there's none) instead of the new target's",
+    .Credit      = "Contributors"
+};
 inline const ReversibleBugFix CAEVehicleAudioEntity_PlayBicycleSound_VolumeFix{
     .Name        = "CAEVehicleAudioEntity::PlayBicycleSound Volume fix",
     .Description = "Original code didn't account for event base volume",

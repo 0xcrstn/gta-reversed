@@ -1060,7 +1060,9 @@ void CCamera::TakeControl(CEntity* target, eCamMode modeToGoTo, eSwitchType swit
             return {
                 [&, this] {
                     if (modeToGoTo == MODE_NONE) {
-                        switch (target->GetType()) {
+                        // BUG: The original picks the mode from the type of the current target (crashing if there's none), not the new one
+                        const auto* const modeEntity = notsa::bugfixes::CCamera_TakeControl_ModeFromNewTarget ? target : m_pTargetEntity;
+                        switch (modeEntity->GetType()) {
                         case ENTITY_TYPE_PED:
                             return MODE_FOLLOWPED;
                         case ENTITY_TYPE_VEHICLE:
