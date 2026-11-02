@@ -17,7 +17,7 @@ void CShadows::InjectHooks() {
     RH_ScopedInstall(Init, 0x706CD0);
     RH_ScopedInstall(Shutdown, 0x706ED0);
     RH_ScopedInstall(TidyUpShadows, 0x707770);
-    RH_ScopedInstall(AddPermanentShadow, 0x706F60, { .Reversed = false });
+    RH_ScopedInstall(AddPermanentShadow, 0x706F60);
     RH_ScopedInstall(UpdatePermanentShadows, 0x70C950, { .Reversed = false });
     RH_ScopedOverloadedInstall(StoreShadowToBeRendered, "Texture", 0x707390, void(*)(uint8, RwTexture*, const CVector&, float, float, float, float, int16, uint8, uint8, uint8, float, bool, float, CRealTimeShadow*, bool));
     RH_ScopedOverloadedInstall(StoreShadowToBeRendered, "Type", 0x707930, void(*)(uint8, const CVector&, float, float, float, float, int16, uint8, uint8, uint8));
@@ -133,7 +133,49 @@ void CShadows::TidyUpShadows() {
 
 // 0x706F60
 void CShadows::AddPermanentShadow(uint8 type, RwTexture* texture, CVector* posn, float topX, float topY, float rightX, float rightY, int16 intensity, uint8 red, uint8 greeb, uint8 blue, float drawDistance, uint32 time, float upDistance) {
-    ((void(__cdecl*)(uint8, RwTexture*, CVector*, float, float, float, float, int16, uint8, uint8, uint8, float, uint32, float))0x706F60)(type, texture, posn, topX, topY, rightX, rightY, intensity, red, greeb, blue, drawDistance, time, upDistance);
+    const auto FindSlot = []() -> CPermanentShadow* {
+        if (const auto it = rng::find(aPermanentShadows, SHADOW_NONE, &CPermanentShadow::m_nType); it != aPermanentShadows.end()) {
+            return &*it;
+        }
+
+        // All slots are taken: replace the oldest shadow that is small (both its vectors are shorter than 0.5)
+        const auto IsSmall = [](float x, float y) {
+            return CVector2D{ x, y }.SquaredMagnitude() < 0.25f;
+        };
+        CPermanentShadow* oldest{};
+        auto              oldestTime{ UINT32_MAX };
+        for (auto& shadow : aPermanentShadows) {
+            if (!IsSmall(shadow.m_fFrontX, shadow.m_fFrontY) || !IsSmall(shadow.m_fSideX, shadow.m_fSideY)) {
+                continue;
+            }
+            if (shadow.m_nTimeCreated < oldestTime) {
+                oldest     = &shadow;
+                oldestTime = shadow.m_nTimeCreated;
+            }
+        }
+        return oldest;
+    };
+
+    auto* const shadow = FindSlot();
+    if (!shadow) { // No small shadow to replace, so this one isn't added
+        return;
+    }
+    shadow->m_nType         = (eShadowType)type;
+    shadow->m_pTexture      = texture;
+    shadow->m_vecPosn       = *posn;
+    shadow->m_fFrontX       = topX;
+    shadow->m_fFrontY       = topY;
+    shadow->m_fSideX        = rightX;
+    shadow->m_fSideY        = rightY;
+    shadow->m_nIntensity    = (uint16)intensity;
+    shadow->m_nRed          = red;
+    shadow->m_nGreen        = greeb;
+    shadow->m_nBlue         = blue;
+    shadow->m_fZDistance    = drawDistance;
+    shadow->m_nTimeDuration = time;
+    shadow->m_fScale        = upDistance;
+    shadow->m_nTimeCreated  = CTimer::GetTimeInMS();
+    // NOTE: The flags (`m_bDrawOnWater`, etc.) are left as they were
 }
 
 // 0x70C950
