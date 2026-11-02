@@ -48,6 +48,7 @@ public:
         m_scanInterval{ 1000 },
         m_posCalculator{ o.m_posCalculator }
     {
+        CEntity::SafeRegisterRef(m_entity); // `Clone` (0x696075) uses the regular constructor, which registers it
     }
 
     ~CTaskComplexSeekEntityAnyMeans() {
@@ -67,13 +68,22 @@ public:
     }
 
     CTask* CreateFirstSubTask(CPed* ped) override {
+        // 0x6960F3: Start the scan timer (Unlike `CTaskTimer::Start` this doesn't check the interval)
+        m_scanTimer.m_nStartTime = CTimer::GetTimeInMS();
+        m_scanTimer.m_nInterval  = m_scanInterval;
+        m_scanTimer.m_bStarted   = true;
+
         return new CTaskComplexDriveToPoint{ nullptr, GetSeekPos(ped), 30.f, 0, MODEL_INVALID, m_targetRadius, DRIVING_STYLE_STOP_FOR_CARS };
     }
 
     CTask* ControlSubTask(CPed* ped) override {
         if (m_entity) {
             if (m_scanTimer.IsOutOfTime()) {
-                m_scanTimer.Start(m_scanInterval);
+                // 0x69620F: Restart the scan timer (Again, without checking the interval)
+                m_scanTimer.m_nStartTime = CTimer::GetTimeInMS();
+                m_scanTimer.m_nInterval  = m_scanInterval;
+                m_scanTimer.m_bStarted   = true;
+
                 notsa::cast<CTaskComplexDriveToPoint>(m_pSubTask)->GoToPoint(GetSeekPos(ped));
             }
             return m_pSubTask;
