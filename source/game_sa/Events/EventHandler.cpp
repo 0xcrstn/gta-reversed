@@ -1708,8 +1708,8 @@ void CEventHandler::ComputePedThreatResponse(CEventAcquaintancePedHate* e, CTask
         switch (e->m_TaskId) {
         case TASK_COMPLEX_SEEK_ENTITY_AIMING: // 0x4C215A
             return new CTaskComplexSeekEntityAiming{e->m_AcquaintancePed, 10.f, 5.f};
-        case TASK_SMART_FLEE_ENTITY_WALKING:
-            return new CTaskComplexSmartFleeEntity{e->m_AcquaintancePed, false, 60.f};
+        case TASK_SMART_FLEE_ENTITY_WALKING: // 0x4C2312
+            return new CTaskComplexSmartFleeEntity{ e->m_AcquaintancePed, false, 60.f, 1'000'000, 1'000, 1.f, PEDMOVE_WALK };
         case TASK_COMPLEX_KILL_PED_ON_FOOT_TIMED: // 0x4C1E7A [yeah, this is from down below]
         case TASK_COMPLEX_KILL_PED_ON_FOOT: { // 0x4C1D71
             if (IsKillTaskAppropriate(m_Ped, e->m_AcquaintancePed, *e)) {
@@ -1736,7 +1736,8 @@ void CEventHandler::ComputePedThreatResponse(CEventAcquaintancePedHate* e, CTask
                 10'000
             };
         case TASK_SIMPLE_GANG_DRIVEBY: {
-            if (!m_Ped->IsInVehicle() || !m_Ped->m_pVehicle->IsDriver(m_Ped) || !m_Ped->GetTaskManager().Find<CTaskComplexCarDrive>()) {
+            // Only passengers do drive-bys (0x4C2184), and only while their `CTaskSimpleCarDrive` is active (0x4C2196)
+            if (!m_Ped->IsInVehicle() || m_Ped->m_pVehicle->IsDriver(m_Ped) || !m_Ped->GetTaskManager().Find<CTaskSimpleCarDrive>()) {
                 return nullptr;
             }
             const auto pedActiveWI = &m_Ped->GetActiveWeapon().GetWeaponInfo(m_Ped);
@@ -1805,10 +1806,10 @@ void CEventHandler::ComputePedThreatResponse(CEventAcquaintancePedHate* e, CTask
             return new CTaskSimpleCower{};
         case TASK_SIMPLE_HANDS_UP: // 0x4C1B39
             return new CTaskSimpleHandsUp{5'000};
-        case TASK_COMPLEX_FLEE_ENTITY:
-            return new CTaskComplexSmartFleeEntity{e->m_AcquaintancePed, false, 60.f};
+        case TASK_COMPLEX_FLEE_ENTITY: // 0x4C1D28
+            return new CTaskComplexFleeEntity{ e->m_AcquaintancePed, false, 60.f };
         case TASK_COMPLEX_SMART_FLEE_ENTITY: { // 0x4C1C4B
-            if (m_Ped->bWantedByPolice && e->m_AcquaintancePed->IsCop()) {
+            if (!m_Ped->bWantedByPolice || !e->m_AcquaintancePed->IsCop()) {
                 return new CTaskComplexSmartFleeEntity{
                     e->m_AcquaintancePed,
                     false,
