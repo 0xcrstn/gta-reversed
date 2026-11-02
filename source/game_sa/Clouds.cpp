@@ -20,7 +20,7 @@ void CClouds::InjectHooks() {
     RH_ScopedInstall(SetUpOneSkyPoly, 0x713060);
     RH_ScopedInstall(Render, 0x713950);
     RH_ScopedInstall(RenderSkyPolys, 0x714650);
-    RH_ScopedInstall(RenderBottomFromHeight, 0x7154B0, { .Reversed = false });
+    RH_ScopedInstall(RenderBottomFromHeight, 0x7154B0);
 
     // Moving fog
     RH_ScopedInstall(MovingFogInit, 0x713660);
@@ -859,12 +859,7 @@ void CClouds::RenderSkyPolys() {
 
 // 0x7154B0
 void CClouds::RenderBottomFromHeight() {
-    /****
-    * Code below should be good
-    * but it isn't complete...
-    *****\
-   
-    const auto camPos = TheCamera.GetPosition();
+    const auto& camPos = TheCamera.GetPosition();
     if (camPos.z < -90.f) { // 0x71557D [Moved up here]
         return;
     }
@@ -879,21 +874,149 @@ void CClouds::RenderBottomFromHeight() {
         (uint8)ClampClr(cc.m_nFluffyCloudsBottomBlue * 1.5f),
         (uint8)255
     };
+    const auto fcRawClr = CRGBA{
+        (uint8)cc.m_nFluffyCloudsBottomRed,
+        (uint8)cc.m_nFluffyCloudsBottomGreen,
+        (uint8)cc.m_nFluffyCloudsBottomBlue,
+        (uint8)255
+    };
 
+    // The clouds rise with the camera once it's above 200
     auto lowZ = 160.f, highZ = 190.f;
+    if (const auto offsetZ = (camPos.z - 190.f - 10.f) * 0.3f; offsetZ > 0.f) {
+        lowZ += offsetZ;
+        highZ += offsetZ;
+    }
 
     auto& windShift = StaticRef<float>(0xC6E954);
+    windShift += CTimer::GetTimeStep() * CWeather::Wind * 0.25f;
 
-    RwRenderStateSet(rwRENDERSTATEZWRITEENABLE,      RWRSTATE(TRUE));
+    auto& randomValues = StaticRef<std::array<float, 80>>(0x8D5658); // In [0, 1)
+
+    RwRenderStateSet(rwRENDERSTATEZWRITEENABLE,      RWRSTATE(FALSE));
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE,       RWRSTATE(TRUE));
     RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, RWRSTATE(TRUE));
-    RwRenderStateSet(rwRENDERSTATEFOGENABLE,         RWRSTATE(TRUE));
+    RwRenderStateSet(rwRENDERSTATEFOGENABLE,         RWRSTATE(FALSE));
     RwRenderStateSet(rwRENDERSTATESRCBLEND,          RWRSTATE(rwBLENDSRCALPHA));
     RwRenderStateSet(rwRENDERSTATEDESTBLEND,         RWRSTATE(rwBLENDINVSRCALPHA));
     RwRenderStateSet(rwRENDERSTATETEXTURERASTER,     RWRSTATE(RwTextureGetRaster(gpCloudMaskTex)));
 
-    // TODO....
-    */
+    const auto maxAlpha = (int32)cc.m_fCloudAlpha;
+
+    //
+    // Flat clouds
+    //
+    if (maxAlpha != 0) { // NOTE: Not `> 0` like for the sprites below
+        RenderBuffer::ClearRenderBuffer();
+        for (auto i = 1; i < 29; i++) {
+            // Wrapped into the 512x512 square around the camera
+            const auto shift = (randomValues[i + 5] * 0.5f + 1.f) * windShift;
+            const auto x     = randomValues[i - 1] * 512.f + shift - camPos.x;
+            const auto y     = randomValues[i] * 512.f + shift - camPos.y;
+
+            const CVector pos{
+                x - (float)(((int32)x & ~0x1FF) + 0x100) + camPos.x,
+                y - (float)(((int32)y & ~0x1FF) + 0x100) + camPos.y,
+                (highZ - lowZ) * randomValues[i + 1] + lowZ
+            };
+
+            // Fade out above the camera...
+            auto alpha = maxAlpha;
+            if (const auto dz = pos.z - camPos.z; dz > 0.f) {
+                alpha = (int32)((1.f - dz * 0.004f) * (float)maxAlpha);
+            }
+            if (alpha <= 0) {
+                continue;
+            }
+
+            // ...and towards the edges of the square
+            if (const auto dist = std::max(std::abs(camPos.x - pos.x), std::abs(camPos.y - pos.y)) * (1.f / 256.f); dist > 0.75f) {
+                alpha = (int32)((1.f - (dist - 0.75f) * 4.f) * (float)alpha);
+            }
+            if (alpha <= 0) {
+                continue;
+            }
+
+            const auto halfW = randomValues[i + 2] * 100.f + 60.f;
+            const auto halfH = randomValues[i + 3] * 100.f + 60.f;
+
+            // NOTE: Only the first vertex uses the brightened colour
+            const auto brightClr = fcClr.WithAlpha((uint8)alpha);
+            const auto clr       = fcRawClr.WithAlpha((uint8)alpha);
+            RenderBuffer::PushIndices({ 2, 1, 0, 2, 3, 1 }, true);
+            RenderBuffer::PushVertex({ pos.x - halfW, pos.y + halfH, pos.z }, { 0.f, 0.f }, brightClr);
+            RenderBuffer::PushVertex({ pos.x + halfW, pos.y + halfH, pos.z }, { 0.f, 1.f }, clr);
+            RenderBuffer::PushVertex({ pos.x - halfW, pos.y - halfH, pos.z }, { 1.f, 0.f }, clr);
+            RenderBuffer::PushVertex({ pos.x + halfW, pos.y - halfH, pos.z }, { 1.f, 1.f }, clr);
+        }
+        RenderBuffer::Render(rwPRIMTYPETRILIST, nullptr, rwIM3D_VERTEXUV | rwIM3D_VERTEXXYZ | rwIM3D_VERTEXRGBA);
+    }
+
+    //
+    // Cloud sprites
+    //
+    auto& cloudSpritesX = StaticRef<std::array<float, 30>>(0x8D5818);
+    auto& cloudSpritesY = StaticRef<std::array<float, 30>>(0x8D57A0);
+
+    CSprite::InitSpriteBuffer();
+    if (maxAlpha > 0) {
+        for (auto i = 0; i < 30; i++) {
+            // Wrapped into the 256x256 square around the camera
+            const auto shift = windShift * 0.5f;
+            const auto x     = shift + cloudSpritesX[i] - camPos.x;
+            const auto y     = shift + cloudSpritesY[i] - camPos.y;
+
+            const CVector pos{
+                x - (float)(((int32)x & ~0xFF) + 0x80) + camPos.x,
+                y - (float)(((int32)y & ~0xFF) + 0x80) + camPos.y,
+                (highZ - lowZ) * randomValues[i] + lowZ
+            };
+
+            // Fade out above and below the camera...
+            auto alpha = (int32)((1.f - std::abs(camPos.z - pos.z) * 0.004f) * (float)maxAlpha);
+            if (alpha <= 0) {
+                continue;
+            }
+
+            const auto size = (randomValues[i + 1] + 1.f) * 12.f;
+
+            // ...towards the edges of the square (NOTE: Sprites past the edge are clamped to it, and still drawn with an alpha of 0)...
+            const auto dist = std::min(std::max(std::abs(camPos.x - pos.x), std::abs(camPos.y - pos.y)) * (1.f / 128.f), 1.f);
+            if (dist > 0.75f) {
+                alpha = (int32)((1.f - (dist - 0.75f) * 4.f) * (float)alpha);
+            }
+
+            // ...and close to the camera
+            if (dist <= 0.05f) {
+                continue;
+            }
+            if (dist < 0.1f) {
+                alpha = (int32)((dist - 0.05f) * (float)alpha * 20.f);
+            }
+
+            CVector   spritePosScr;
+            CVector2D spriteSizeScr;
+            if (!CSprite::CalcScreenCoors(pos, &spritePosScr, &spriteSizeScr.x, &spriteSizeScr.y, false, true)) {
+                continue;
+            }
+            CSprite::RenderBufferedOneXLUSprite(
+                spritePosScr,
+                spriteSizeScr * size,
+                fcRawClr.r,
+                fcRawClr.g,
+                fcRawClr.b,
+                256,
+                1.f / spritePosScr.z,
+                (uint8)alpha
+            );
+        }
+    }
+    CSprite::FlushSpriteBuffer();
+
+    RwRenderStateSet(rwRENDERSTATETEXTURERASTER,     RWRSTATE(NULL));
+    RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, RWRSTATE(FALSE));
+    RwRenderStateSet(rwRENDERSTATEZWRITEENABLE,      RWRSTATE(TRUE));
+    RwRenderStateSet(rwRENDERSTATEZTESTENABLE,       RWRSTATE(TRUE));
 }
 
 //
