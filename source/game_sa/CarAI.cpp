@@ -216,14 +216,14 @@ eCarMission CCarAI::FindPoliceCarMissionForWantedLevel() {
     }
     return CGeneral::RandomBool(chance)
         ? MISSION_BLOCKPLAYER_FARAWAY
-        : MISSION_BLOCKPLAYER_HANDBRAKESTOP;
+        : MISSION_RAMPLAYER_FARAWAY;
 }
 
 // 0x41CAA0
 int32 CCarAI::FindPoliceCarSpeedForWantedLevel(CVehicle* vehicle) {
     const auto& maxVelocity = vehicle->m_pHandlingData->m_transmissionData.m_MaxFlatVelocity;
     switch (FindPlayerWanted()->GetWantedLevel()) {
-    case eWantedLevel::WANTED_CLEAN:    return CGeneral::GetRandomNumberInRange<int32>(12, 16);
+    case eWantedLevel::WANTED_CLEAN:    return (int32)CGeneral::GetRandomNumberInRange(12.f, 16.f);
     case eWantedLevel::WANTED_LEVEL_1:  return 25;
     case eWantedLevel::WANTED_LEVEL_2:  return 34;
     case eWantedLevel::WANTED_LEVEL_3:  return (int32)(maxVelocity * GAME_SPEED_TO_CAR_AI_SPEED * 0.90f);
