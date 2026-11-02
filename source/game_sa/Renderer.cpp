@@ -357,7 +357,6 @@ void CRenderer::RenderEverythingBarRoads() {
 
         bool bInserted = false;
         if (entity->GetIsTypeVehicle() || (entity->GetIsTypePed() && CVisibilityPlugins::GetClumpAlpha(entity->GetRpClump()) != 255)) {
-            // todo: R* nice check | or we missed smth here?
             if (entity->GetIsTypeVehicle()) {
                 bool bInsertIntoSortedList = false;
                 if (vehicle->IsBoat()) {
@@ -379,6 +378,8 @@ void CRenderer::RenderEverythingBarRoads() {
                     bInserted = CVisibilityPlugins::InsertEntityIntoSortedList(entity, fMagnitude);
                 else
                     bInserted = CVisibilityPlugins::InsertEntityIntoUnderwaterList(entity, fMagnitude);
+            } else { // Partially transparent ped
+                bInserted = CVisibilityPlugins::InsertEntityIntoSortedList(entity, DistanceBetweenPoints(entity->GetPosition(), ms_vecCameraPosition));
             }
         }
         if (!bInserted)
