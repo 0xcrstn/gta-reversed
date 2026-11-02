@@ -11,7 +11,7 @@ void CPlayerInfo::InjectHooks() {
 
     RH_ScopedInstall(Constructor, 0x571920, { .State = HS::RedirectToGTA, .Locked = true }); // hooking ctor will produce bugs with weapons, you will never give weapon through cheat or something
     RH_ScopedInstall(CancelPlayerEnteringCars, 0x56E860);
-    RH_ScopedInstall(FindObjectToSteal, 0x56DBD0, { .Reversed = false });
+    RH_ScopedInstall(FindObjectToSteal, 0x56DBD0);
     RH_ScopedInstall(EvaluateCarPosition, 0x56DAD0);
     RH_ScopedInstall(Process, 0x56F8D0, { .Reversed = false });
     RH_ScopedInstall(FindClosestCarSectorList, 0x56F4E0, { .Reversed = false });
@@ -74,7 +74,39 @@ void CPlayerInfo::CancelPlayerEnteringCars(CVehicle* vehicle) {
 
 // 0x56DBD0
 CEntity* CPlayerInfo::FindObjectToSteal(CPed* ped) {
-    return plugin::CallAndReturn<CEntity*, 0x56DBD0, CPed*>(ped);
+    const auto centre = ped->GetPosition() + ped->GetForward() * 1.5f;
+
+    const auto startX = std::max(CWorld::GetSectorX(centre.x - 3.0f), 0);
+    const auto startY = std::max(CWorld::GetSectorY(centre.y - 3.0f), 0);
+    const auto endX   = std::min(CWorld::GetSectorX(centre.x + 3.0f), MAX_SECTORS_X - 1);
+    const auto endY   = std::min(CWorld::GetSectorY(centre.y + 3.0f), MAX_SECTORS_Y - 1);
+
+    // NOTE: The scan code isn't set on the objects, so an object in more sectors is checked more than once
+    CWorld::AdvanceCurrentScanCode();
+
+    CEntity* found{};
+    for (auto y = startY; y <= endY; y++) {
+        for (auto x = startX; x <= endX; x++) {
+            for (auto* const obj : CWorld::GetRepeatSector(x, y).Objects) {
+                if (!obj->objectFlags.bIsLiftable || obj->GetScanCode() == CWorld::GetCurrentScanCode()) {
+                    continue;
+                }
+
+                const auto centreToObj = obj->GetPosition() - centre;
+                if (centreToObj.SquaredMagnitude() >= 4.5f) {
+                    continue;
+                }
+
+                // NOTE: A close object always scores below 1000, so the score doesn't matter and this finds the last close object
+                const auto ahead = centreToObj.Dot(ped->GetForward());
+                const auto score = std::abs(centreToObj.Dot(ped->GetRight())) * 3.0f + (ahead < 0.0f ? 10.0f - ahead : ahead);
+                if (score < 1000.0f) {
+                    found = obj;
+                }
+            }
+        }
+    }
+    return found;
 }
 
 // 0x56DAD0
