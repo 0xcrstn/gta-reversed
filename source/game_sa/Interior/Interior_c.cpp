@@ -43,7 +43,7 @@ void Interior_c::InjectHooks() {
     RH_ScopedInstall(CheckTilesEmpty, 0x591680, { .Reversed = false });
     RH_ScopedInstall(SetTilesStatus, 0x591700, { .Reversed = false });
     RH_ScopedInstall(SetCornerTiles, 0x5917C0, { .Reversed = false });
-    RH_ScopedInstall(GetTileStatus, 0x5918E0, { .Reversed = false });
+    RH_ScopedInstall(GetTileStatus, 0x5918E0);
     RH_ScopedInstall(GetNumEmptyTiles, 0x591920, { .Reversed = false });
     RH_ScopedInstall(GetRandomTile, 0x591B20, { .Reversed = false });
     RH_ScopedInstall(Shop_FurnishAisles, 0x59A590, { .Reversed = false });
@@ -245,7 +245,10 @@ void Interior_c::SetCornerTiles(int32 a4, int32 a3, int32 a5, uint8 a6) {
 
 // 0x5918E0
 int32 Interior_c::GetTileStatus(int32 x, int32 y) {
-    return plugin::CallMethodAndReturn<int32, 0x5918E0, Interior_c*, int32, int32>(this, x, y);
+    if (x < 0 || x >= m_box->m_width || y < 0 || y >= m_box->m_depth) {
+        return 1; // Outside of the interior
+    }
+    return (uint8)field_68[x * 30 + y]; // The tile grid is 30 tiles wide, the status is zero-extended
 }
 
 // 0x591920
