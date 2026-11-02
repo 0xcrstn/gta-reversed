@@ -12,7 +12,7 @@ void CTaskSimpleCarDrive::InjectHooks() {
 
     RH_ScopedInstall(TriggerIK, 0x63C500);
     RH_ScopedInstall(UpdateBopping, 0x63C900);
-    RH_ScopedInstall(StartBopping, 0x642760, { .Reversed = false });
+    RH_ScopedInstall(StartBopping, 0x642760);
     RH_ScopedInstall(ProcessHeadBopping, 0x6428C0, { .Reversed = false });
     RH_ScopedInstall(ProcessArmBopping, 0x642AE0, { .Reversed = false });
     RH_ScopedInstall(ProcessBopping, 0x642E70);
@@ -116,7 +116,27 @@ void CTaskSimpleCarDrive::UpdateBopping() {
 
 // 0x642760
 void CTaskSimpleCarDrive::StartBopping(CPed* ped) {
-    plugin::CallMethod<0x642760, CTaskSimpleCarDrive*, CPed*>(this, ped);
+    // Join the first other occupant that's already bopping (NOTE: Only the first 3 passengers are checked)
+    auto* const vehicle = ped->m_pVehicle;
+    for (auto* const occupant : { vehicle->m_pDriver, vehicle->m_apPassengers[0], vehicle->m_apPassengers[1], vehicle->m_apPassengers[2] }) {
+        if (!occupant || occupant == ped) {
+            continue;
+        }
+        const auto* const task = occupant->GetTaskManager().Find<CTaskSimpleCarDrive>();
+        if (!task || task->m_nBoppingStartTime == -1) {
+            continue;
+        }
+        m_nBoppingStartTime = task->m_nBoppingStartTime;
+        m_nBoppingEndTime   = task->m_nBoppingEndTime;
+        UpdateBopping();
+        return;
+    }
+
+    // Otherwise start with a random tempo of 60 to 119 beats per minute, the interval being the length of a beat in ms
+    m_nBoppingStartTime       = static_cast<int32>(CTimer::GetTimeInMS());
+    const auto beatsPerMinute = 60 + static_cast<int32>(static_cast<float>(CGeneral::GetRandomNumber()) * (1.0f / 32768.0f) * 60.0f);
+    m_nBoppingEndTime         = static_cast<int32>(1.0f / (static_cast<float>(beatsPerMinute) * (1.0f / 60.0f)) * 1000.0f);
+    m_fBoppingProgress        = 0.0f; // NOTE: `m_nBoppingCompletedTimes` is left as is
 }
 
 // 0x6428C0
