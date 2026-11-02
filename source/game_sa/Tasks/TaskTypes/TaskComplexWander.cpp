@@ -201,8 +201,11 @@ void CTaskComplexWander::UpdateDir(CPed* ped) {
     }
 
     if (newDir != m_nDir) {
+        // The new direction is tried on copies of the nodes, the route isn't changed here
+        CNodeAddress originNode = m_LastNode;
+        CNodeAddress targetNode = m_NextNode;
         uint8 outDir;
-        UpdatePathNodes(ped, newDir, m_LastNode, m_NextNode, outDir);
+        UpdatePathNodes(ped, newDir, originNode, targetNode, outDir);
 
         uint8 currentDir = m_nDir;
         uint8 theDir = outDir;
@@ -283,13 +286,16 @@ bool CTaskComplexWander::ValidNodes() const {
 
 // 0x674560
 void CTaskComplexWander::ScanForBlockedNodes(CPed* ped) {
-    if (m_pSubTask->GetTaskType() == TASK_SIMPLE_GO_TO_POINT && m_NextNode.IsValid()) {
+    if (m_pSubTask->GetTaskType() == TASK_SIMPLE_GO_TO_POINT && m_NextNode.IsAreaValid()) {
         if (ScanForBlockedNode(ped, m_NextNode)) {
             m_pSubTask->MakeAbortable(ped, ABORT_PRIORITY_LEISURE, nullptr);
 
+            // The next nodes are tried on copies, the route isn't changed here
+            CNodeAddress originNode = m_LastNode;
+            CNodeAddress targetNode = m_NextNode;
             uint8 outDir = 0;
-            UpdatePathNodes(ped, m_nDir, m_LastNode, m_NextNode, outDir);
-            if (ScanForBlockedNode(ped, m_NextNode) || &m_NextNode == &m_LastNode) {
+            UpdatePathNodes(ped, m_nDir, originNode, targetNode, outDir);
+            if (ScanForBlockedNode(ped, targetNode) || targetNode == m_LastNode) {
                 m_bAllNodesBlocked = true;
             }
         }
