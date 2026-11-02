@@ -30,6 +30,7 @@ public:
     CTaskSimpleRunNamedAnim(const char* animName, const char* animGroupName, uint32 animFlags, float blendDelta,
         uint32 endTime, bool bDontInterrupt, bool bRunInSequence, bool bOffsetPed, bool bHoldLastFrame);
 
+    // 0x61AA90
     eTaskType GetTaskType() const override { return Type; }
 
 
