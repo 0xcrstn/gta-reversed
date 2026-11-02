@@ -1024,51 +1024,58 @@ void CClouds::VolumetricCloudsInit() {
 void CClouds::VolumetricClouds_Create(CVector* posn) {
     using CGeneral::GetRandomNumberInRange;
 
+    // Random integer in [min, max)
+    // NOTE: Unlike `GetRandomNumberInRange<int32>`, the random number is scaled by `1 / 32768` and only the offset from `min` is truncated
+    const auto GetRandomInt = [](int32 min, int32 max) {
+        return min + (int32)((float)CGeneral::GetRandomNumber() * (1.f / 32768.f) * (float)(max - min));
+    };
+
     const auto rand1To5 = GetRandomNumberInRange(1.f, 5.f);
 
-    const auto AddVolumetricCloud = [
-        randMinSizeXYZ = rand1To5 * 20.f,
-        randMaxSizeXY  = rand1To5 * 100.f,
-        randMaxSizeZ   = rand1To5 * 40.f
-    ](int32 vcidx, CVector pos) {
+    // Sets up everything but the position, whose random numbers are generated after these
+    const auto AddVolumetricCloud = [GetRandomInt,
+                                     randMinSizeXYZ = rand1To5 * 20.f,
+                                     randMaxSizeXY  = rand1To5 * 100.f,
+                                     randMaxSizeZ   = rand1To5 * 40.f](int32 vcidx) {
         ms_vc.bUsed[vcidx]        = true;
         ms_vc.bJustCreated[vcidx] = true;
-        ms_vc.alpha[vcidx]        = GetRandomNumberInRange<int32>(36, 128);
+        ms_vc.alpha[vcidx]        = GetRandomInt(36, 128); // 0x71601F
 
         ms_vc.size[vcidx] = CVector{
             GetRandomNumberInRange(randMinSizeXYZ, randMaxSizeXY),
             GetRandomNumberInRange(randMinSizeXYZ, randMaxSizeXY),
             GetRandomNumberInRange(randMinSizeXYZ, randMaxSizeZ),
         };
-
-        ms_vc.pos[vcidx] = pos;
     };
 
     if (posn) {
-        const auto randMinMaxOffsetXYZ = rand1To5 * 3.f;
+        const auto randMinMaxOffsetXYZ = (int32)(rand1To5 * 3.f);
+
+        // Each cloud is offset from the previous one (`*posn` itself isn't modified)
+        CVector pos = *posn;
         for (auto i = 0; i < 5; i++) {
             const auto vcidx = VolumetricClouds_GetFirstFreeSlot();
             if (vcidx == -1) {
                 return;
             }
-            const auto pos = *posn = *posn + CVector::Random(-randMinMaxOffsetXYZ, randMinMaxOffsetXYZ);
-            AddVolumetricCloud(
-                vcidx,
-                pos
-            );
+            AddVolumetricCloud(vcidx);
+            pos += CVector{
+                (float)GetRandomInt(-randMinMaxOffsetXYZ, randMinMaxOffsetXYZ),
+                (float)GetRandomInt(-randMinMaxOffsetXYZ, randMinMaxOffsetXYZ),
+                (float)GetRandomInt(-randMinMaxOffsetXYZ, randMinMaxOffsetXYZ),
+            };
+            ms_vc.pos[vcidx] = pos;
         }
     } else {
         const auto camPos  = TheCamera.GetPosition();
         const auto maxDist = m_fVolumetricCloudMaxDistance;
         for (auto i = 0; i < MAX_VOLUMETRIC_CLOUDS; i++) {
-            AddVolumetricCloud(
-                i,
-                camPos + CVector{
-                    GetRandomNumberInRange(-maxDist, maxDist),
-                    GetRandomNumberInRange(-maxDist, maxDist),
-                    GetRandomNumberInRange(-maxDist * 0.25f, maxDist * 0.25f),
-                }
-            );
+            AddVolumetricCloud(i);
+            ms_vc.pos[i] = camPos + CVector{
+                GetRandomNumberInRange(-maxDist, maxDist),
+                GetRandomNumberInRange(-maxDist, maxDist),
+                GetRandomNumberInRange(-maxDist * 0.25f, maxDist * 0.25f),
+            };
         }
     }
 }
