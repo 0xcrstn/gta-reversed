@@ -18,6 +18,8 @@
 #include "TaskComplexEnterCarAsDriver.h"
 #include "TaskComplexEnterCarAsPassenger.h"
 
+#include <reversiblebugfixes/Bugs.hpp>
+
 #define NOTSA_VANILLA_COLLISIONS // TODO: move to config.h?
 
 using Shape = CCollision::DebugSettings::ShapeShapeCollision::Shape;
@@ -115,8 +117,9 @@ void CalculateColPointInsideBox(CBox const& box, CVector const& point, CColPoint
         return a <= 0.f ? -1.f : 1.f;
     };
 
-    colPoint = {};
-    colPoint.m_vecPoint = point;
+    // The original only writes the point, the normal and the depth, the rest of the colpoint is left untouched
+    colPoint.m_vecPoint  = point;
+    colPoint.m_vecNormal = CVector{};
 
     // Original (0x411EC0): pick the axis with the SMALLEST distance to a face (shallowest exit)
     if (pointToClosest.x < pointToClosest.y && pointToClosest.x < pointToClosest.z) {
@@ -282,8 +285,10 @@ bool CCollision::ProcessSphereBox(CColSphere const& sph, CColBox const& box, CCo
         colp.m_fDepth        = boxCP.m_fDepth + sph.m_fRadius;
 
         colp.m_nSurfaceTypeA = sph.m_Surface.m_nMaterial;
+        colp.m_nPieceTypeA   = sph.m_Surface.m_nPiece;
         colp.m_nLightingA    = sph.m_Surface.m_nLighting;
         colp.m_nSurfaceTypeB = box.m_Surface.m_nMaterial;
+        colp.m_nPieceTypeB   = box.m_Surface.m_nPiece;
         colp.m_nLightingB    = box.m_Surface.m_nLighting;
 
         minDistSq            = 0.f; // Original sets it to 0 for inside hits
@@ -306,7 +311,7 @@ bool CCollision::ProcessSphereBox(CColSphere const& sph, CColBox const& box, CCo
         const auto distSq = dir.SquaredMagnitude();
         if (distSq < minDistSq) {
             const auto dist = std::sqrt(distSq);
-            if (dist >= sph.m_fRadius) {
+            if (dist > sph.m_fRadius) { // A sphere touching the box (`dist == radius`) collides too
                 return false;
             }
 
@@ -315,9 +320,11 @@ bool CCollision::ProcessSphereBox(CColSphere const& sph, CColBox const& box, CCo
             colp.m_fDepth        = sph.m_fRadius - dist;
 
             colp.m_nSurfaceTypeA = sph.m_Surface.m_nMaterial;
+            colp.m_nPieceTypeA   = sph.m_Surface.m_nPiece;
             colp.m_nLightingA    = sph.m_Surface.m_nLighting;
 
             colp.m_nSurfaceTypeB = box.m_Surface.m_nMaterial;
+            colp.m_nPieceTypeB   = box.m_Surface.m_nPiece;
             colp.m_nLightingB    = box.m_Surface.m_nLighting;
 
             minDistSq            = distSq;
@@ -1073,9 +1080,34 @@ bool CCollision::TestVerticalLineBox(CColLine const& line, CBox const& box) {
 bool CCollision::ProcessLineBox(CColLine const& line, CColBox const& box, CColPoint& colPoint, float& maxTouchDistance) {
     ZoneScoped;
 
+    const auto SetSurfaces = [&] {
+        // NOTE: The original doesn't write `m_nLightingA`
+        colPoint.m_nSurfaceTypeA = eSurfaceType::SURFACE_DEFAULT;
+        colPoint.m_nPieceTypeA   = 0;
+
+        colPoint.m_nSurfaceTypeB = box.m_Surface.m_nMaterial;
+        colPoint.m_nPieceTypeB   = box.m_Surface.m_nPiece;
+        colPoint.m_nLightingB    = box.m_Surface.m_nLighting;
+    };
+
+    // Line starts inside the box (and not on its surface)
+    const auto& s             = line.m_vecStart;
+    const auto  isStartInside = s.x > box.m_vecMin.x && s.x < box.m_vecMax.x
+        && s.y > box.m_vecMin.y && s.y < box.m_vecMax.y
+        && s.z > box.m_vecMin.z && s.z < box.m_vecMax.z;
+    if (isStartInside) {
+        if (!box.IsPointInside(line.m_vecEnd)) {
+            ms_iProcessLineNumCrossings++; // The line leaves the box
+        }
+        CalculateColPointInsideBox(box, s, colPoint);
+        SetSurfaces();
+        maxTouchDistance = 0.f;
+        return true;
+    }
+
     float mint, t, x, y, z;
-    CVector normal;
-    CVector p;
+    CVector normal{}; // NOTSA: Zero initialized, see the bug below
+    CVector p{};
 
     mint = 1.0f;
     // check if points are on opposite sides of min x plane
@@ -1174,16 +1206,20 @@ bool CCollision::ProcessLineBox(CColLine const& line, CColBox const& box, CColPo
     if (mint >= maxTouchDistance)
         return false;
 
+    // BUG: If none of the faces were hit (`mint` is still 1, only possible with a `maxTouchDistance` above 1)
+    //      the original reports a collision with an uninitialized point and normal
+    if (mint == 1.0f && notsa::bugfixes::CCollision_ProcessLineBox_UninitializedPoint) {
+        return false;
+    }
+
     colPoint.m_vecPoint = p;
     colPoint.m_vecNormal = normal;
-
-    colPoint.m_nSurfaceTypeA = eSurfaceType::SURFACE_DEFAULT;
-    colPoint.m_nLightingA = tColLighting(0);
-
-    colPoint.m_nSurfaceTypeB = box.m_Surface.m_nMaterial;
-    colPoint.m_nLightingB = box.m_Surface.m_nLighting;
+    SetSurfaces();
 
     maxTouchDistance = mint;
+
+    // The line enters the box, and leaves it too if it ends outside of it
+    ms_iProcessLineNumCrossings += box.IsPointInside(line.m_vecEnd) ? 1 : 2;
 
     return true;
 }
