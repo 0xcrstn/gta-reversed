@@ -3,6 +3,7 @@
 #include "TimeCycle.h"
 #include "PostEffects.h"
 #include "Shadows.h"
+#include <reversiblebugfixes/Bugs.hpp>
 
 auto& TunnelWeather = StaticRef<int>(0x8CDEE0); // 9 = WEATHER_FOGGY_SF, unchanged
 
@@ -73,6 +74,17 @@ void CTimeCycle::Initialise(bool padFile) {
                 }
             }
 
+            // The directional multiplier is optional (The stock file doesn't have it)
+            dirMult = 1.0f;
+
+            // R* made a mistake in line 320: instead of the first 3 RGB values only 255 is specified,
+            // which causes the entire line to shift and be read incorrectly. Use the previous hour's ambient color instead.
+            char repairedLine[sizeof(CFileLoader::ms_line) + sizeof("255 255 255")];
+            if (notsa::bugfixes::CTimeCycle_Initialise_CorruptLine && w == WEATHER_RAINY_COUNTRYSIDE && h == TIME_8PM && std::string_view{ line }.starts_with("255 167 198 223 ")) {
+                std::snprintf(repairedLine, sizeof(repairedLine), "%u %u %u%s", (uint32)m_nAmbientRed[h - 1][w], (uint32)m_nAmbientGreen[h - 1][w], (uint32)m_nAmbientBlue[h - 1][w], line + 3);
+                line = repairedLine;
+            }
+
             const auto n = sscanf(line,
                 "%d %d %d " // Static ambience color
                 "%d %d %d " // Dynamic ambience color
@@ -120,10 +132,6 @@ void CTimeCycle::Initialise(bool padFile) {
                 &cloudAlpha, &highLightMinIntensity, &waterFogAlpha, &dirMult
             );
             if (n < 51) {
-                // TODO:
-                // R* made a mistake in line 320:
-                // instead of the first 3 RGB values, only 255 is specified,
-                // which causes the entire line to shift and be read incorrectly
                 NOTSA_LOG_WARN("Bad timecyc line: '{}'", line);
             }
 

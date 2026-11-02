@@ -185,6 +185,13 @@ inline const ReversibleBugFix CObject_Render_DetachedPartRendering{
                    "so they were rendered with the placeholder colours. Apply them before rendering the part, and render both of its sides",
     .Credit      = "SilentPatch Contributors"
 };
+inline const ReversibleBugFix CTimeCycle_Initialise_CorruptLine{
+    .Name            = "Corrupt timecyc.dat line",
+    .Description     = "The stock timecyc.dat line of the rainy countryside weather at 8PM has a single value (255) instead of the 3 of the ambient color, "
+                       "so the rest of the line is read shifted. The fix uses the previous hour's ambient color and reads the rest of the line as intended",
+    .Credit          = "SilentPatch Contributors",
+    .RequiresRestart = true
+};
 inline const ReversibleBugFix CVehicleModelInfo_SetClump_DirtMaterialsNeverFound{
     .Name            = "Vehicle dirt levels",
     .Description     = "The game never fills `CVehicleModelInfo::m_apDirtMaterials`, so every vehicle is rendered with the maximum dirt "
