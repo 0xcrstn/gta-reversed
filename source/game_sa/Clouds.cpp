@@ -1106,7 +1106,7 @@ void CClouds::VolumetricCloudsRender() {
     }
 
     const auto plyr = FindPlayerPed();
-    if (!CGame::CanSeeOutSideFromCurrArea() || !plyr->IsInCurrentArea()) {
+    if (!CGame::CanSeeOutSideFromCurrArea() || plyr->GetAreaCode() != AREA_CODE_NORMAL_WORLD) {
         if (!s_DebugSettings.VolumetricClouds.Force) {
             return;
         }
@@ -1115,7 +1115,7 @@ void CClouds::VolumetricCloudsRender() {
     m_fVolumetricCloudDensity = [] {
         switch (g_fx.GetFxQuality()) {
         case FX_QUALITY_LOW:    return 0.5f;
-        case FX_QUALITY_MEDIUM: return 1.f / 3.f;
+        case FX_QUALITY_MEDIUM: return 0.66f; // 0x7163BE
         default:                return 1.f;
         }
     }();
@@ -1155,8 +1155,6 @@ void CClouds::VolumetricCloudsRender() {
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE,   RWRSTATE(TRUE));
     RwRenderStateSet(rwRENDERSTATETEXTURERASTER, RWRSTATE(RwTextureGetRaster(ms_vc.texture)));
     RwRenderStateSet(rwRENDERSTATETEXTUREFILTER, RWRSTATE(rwFILTERLINEAR));
-
-    FindPlayerPed()->GetMoveSpeed() = CVector{0.f, 0.f, 0.f};
 
     const auto plyrPos = FindPlayerCoors();
     const auto plyrVeh = FindPlayerVehicle();
