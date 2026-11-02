@@ -3,6 +3,25 @@
 #include "TaskComplexDriveToPoint.h"
 #include "TaskComplexGoToPointAnyMeans.h"
 
+void CTaskComplexDriveToPoint::InjectHooks() {
+    RH_ScopedVirtualClass(CTaskComplexDriveToPoint, 0x86E9DC, 14);
+    RH_ScopedCategory("Tasks/TaskTypes");
+
+    RH_ScopedInstall(Constructor, 0x63CE00, { .Reversed = false });
+    RH_ScopedInstall(Destructor, 0x63CE70);
+
+    // `Drive` (0x645420) keeps `this` in ECX across the call and passes it to `CreateSubTask` (0x6454FF)
+    RH_ScopedOverloadedInstall(IsTargetBlocked, "Ped", 0x6452C0, bool (CTaskComplexDriveToPoint::*)(CPed*) const, { .StackArgumentsToPreserve = 1, .PreserveRegisters = true });
+    // `IsTargetBlocked(CPed*)` (0x6452C0) calls this twice without reloading `this` into ECX
+    RH_ScopedOverloadedInstall(IsTargetBlocked, "Entities", 0x6432A0, bool (CTaskComplexDriveToPoint::*)(CPed*, CEntity**, int32) const, { .StackArgumentsToPreserve = 3, .PreserveRegisters = true });
+
+    RH_ScopedVMTInstall(Clone, 0x63DDE0);
+    RH_ScopedVMTInstall(GetTaskType, 0x63CE60, { .Reversed = false });
+    RH_ScopedVMTInstall(SetUpCar, 0x63CF00);
+    RH_ScopedVMTInstall(CreateSubTaskCannotGetInCar, 0x63CE80);
+    RH_ScopedVMTInstall(Drive, 0x645420, { .Reversed = false });
+}
+
 // 0x63CE00
 CTaskComplexDriveToPoint::CTaskComplexDriveToPoint(CVehicle* vehicle, const CVector& point, float speed, int32 arg4, eModelID carModelIndexToCreate, float radius, eCarDrivingStyle drivingStyle) :
       CTaskComplexCarDrive(vehicle, speed, carModelIndexToCreate, drivingStyle),
@@ -73,8 +92,6 @@ CTask* CTaskComplexDriveToPoint::Drive(CPed* ped) {
 
 // 0x6452C0
 bool CTaskComplexDriveToPoint::IsTargetBlocked(CPed* ped) const {
-    return plugin::CallMethodAndReturn<bool, 0x6452C0, const CTaskComplexDriveToPoint*, CPed*>(this, ped); // untested
-
     if (DistanceBetweenPointsSquared(ped->GetPosition(), m_Point) > sq(6.0f)) {
         return false;
     }
@@ -85,8 +102,6 @@ bool CTaskComplexDriveToPoint::IsTargetBlocked(CPed* ped) const {
 
 // 0x6432A0
 bool CTaskComplexDriveToPoint::IsTargetBlocked(CPed* ped, CEntity** entities, int32 numEntities) const {
-    return plugin::CallMethodAndReturn<bool, 0x6432A0, const CTaskComplexDriveToPoint*, CPed*, CEntity**, int32>(this, ped, entities, numEntities); // untested
-
     if (!ped->m_pVehicle)
         return false;
 
@@ -100,11 +115,11 @@ bool CTaskComplexDriveToPoint::IsTargetBlocked(CPed* ped, CEntity** entities, in
         }
 
         const auto& vehicleRadius = ped->m_pVehicle->GetModelInfo()->GetColModel()->GetBoundRadius();
-        if (DistanceBetweenPointsSquared(vehPos, entity->GetPosition()) > sq(vehicleRadius)) {
+        const auto& entityRadius  = entity->GetModelInfo()->GetColModel()->GetBoundRadius();
+        if (DistanceBetweenPointsSquared(m_Point, entity->GetPosition()) >= sq(entityRadius)) { // Only an entity covering the target point blocks it
             continue;
         }
 
-        const auto& entityRadius = entity->GetModelInfo()->GetColModel()->GetBoundRadius();
         if ((entityRadius + vehicleRadius) * (entityRadius + vehicleRadius) * 1.5f > dist.SquaredMagnitude()) {
             return true;
         }
