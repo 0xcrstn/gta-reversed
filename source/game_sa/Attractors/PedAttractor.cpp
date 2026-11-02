@@ -166,8 +166,10 @@ CTask* CPedAttractor::GetTaskForPed(CPed* ped) {
 
 // 0x5EB550
 int32 CPedAttractor::GetQueueSlot(const CPed* ped) {
-    assert(rng::find(m_ArrivedPeds, ped) != m_ArrivedPeds.end());
-    return rng::distance(m_ArrivedPeds.begin(), rng::find(m_ArrivedPeds, ped));
+    const auto it = rng::find(m_ArrivedPeds, ped);
+    return it != m_ArrivedPeds.end()
+        ? rng::distance(m_ArrivedPeds.begin(), it)
+        : -1;
 }
 
 // 0x5EB590
