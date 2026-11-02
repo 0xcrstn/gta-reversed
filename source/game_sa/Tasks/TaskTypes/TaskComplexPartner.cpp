@@ -1,11 +1,14 @@
 #include "StdInc.h"
 
 #include "TaskComplexPartner.h"
+#include "TaskComplexPartnerChat.h"
+#include "TaskSimpleStandStill.h"
 
 void CTaskComplexPartner::InjectHooks() {
     RH_ScopedVirtualClass(CTaskComplexPartner, 0x870664, 14);
     RH_ScopedCategory("Tasks/TaskTypes");
     RH_ScopedInstall(Constructor, 0x681E70);
+    RH_ScopedVMTInstall(CreateFirstSubTask, 0x681F20);
 }
 
 // 0x681E70
@@ -49,8 +52,23 @@ CTask* CTaskComplexPartner::CreateNextSubTask(CPed* ped) {
     return plugin::CallMethodAndReturn<CTask*, 0x683AD0, CTaskComplexPartner*, CPed*>(this, ped);
 }
 
+// 0x681F20
 CTask* CTaskComplexPartner::CreateFirstSubTask(CPed* ped) {
-    return plugin::CallMethodAndReturn<CTask*, 0x681F20, CTaskComplexPartner*, CPed*>(this, ped);
+    // Like in the original, the base class sets up the conversation of `CTaskComplexPartnerChat`
+    if (m_leadSpeaker && m_taskId == TASK_COMPLEX_PARTNER_CHAT) {
+        auto* const chat = static_cast<CTaskComplexPartnerChat*>(this);
+        if (chat->m_conversationEnabled) {
+            if (CAEPedSpeechAudioEntity::RequestPedConversation(ped, m_partner)) {
+                chat->m_pedConversationLoaded = true;
+            } else if (chat->field_75) {
+                chat->m_conversationEnabled = false; // Go on without the conversation
+            } else {
+                return nullptr;
+            }
+        }
+    }
+    ped->StopPlayingHandSignal();
+    return new CTaskSimpleStandStill(50, false, false, 8.0f);
 }
 
 CTask* CTaskComplexPartner::ControlSubTask(CPed* ped) {
