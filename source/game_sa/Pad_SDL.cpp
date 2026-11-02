@@ -96,11 +96,11 @@ bool CPad::ProcessKeyboardEvent(const SDL_Event& e, CKeyboardState& ks) {
         case SDLK_ASTERISK:     ks.mul = s;                     break;
         case SDLK_MINUS:        ks.sub = s;                     break;
         case SDLK_PLUS:         ks.add = s;                     break;
-        case SDLK_RETURN:       ks.enter = s;                   break;
+        case SDLK_RETURN:       ks.extenter = s;                break; // rsENTER
         case SDLK_PERIOD:       ks.decimal = s;                 break;
         case SDLK_TAB:          ks.tab = s;                     break;
         case SDLK_CAPSLOCK:     ks.capslock = s;                break;
-        case SDLK_KP_ENTER:     ks.extenter = s;                break; // (?)
+        case SDLK_KP_ENTER:     ks.enter = s;                   break; // rsPADENTER
         case SDLK_LSHIFT:       ks.lshift = s;                  break;
         case SDLK_RSHIFT:       ks.rshift = s;                  break;
         case SDLK_LCTRL:        ks.lctrl = s;                   break;
@@ -111,9 +111,8 @@ bool CPad::ProcessKeyboardEvent(const SDL_Event& e, CKeyboardState& ks) {
         case SDLK_RGUI:         ks.rwin = s;                    break;
         case SDLK_APPLICATION:  ks.apps = s;                    break; // (?)
         default: { // Other keys
-            const auto key = std::toupper(e.key.key);
-            if (key <= 0xFF) {
-                ks.standardKeys[key] = s;
+            if (e.key.key <= 0xFF) { // `std::toupper` only takes `unsigned char` values
+                ks.standardKeys[std::toupper(e.key.key)] = s;
             }
             return true;
         }
@@ -168,11 +167,37 @@ bool CPad::ProcessJoyStickEvent(const SDL_Event& e, CControllerState& cs) {
 }
 
 bool CPad::ProcessEvent(const SDL_Event& e, bool ignoreMouseEvents, bool ignoreKeyboardEvents) {
+    // Clear the input when the debug UI starts or stops capturing it, otherwise keys held at that moment get stuck
+    static bool s_WasMouseCaptured{}, s_WasKeyboardCaptured{};
+    if (s_WasKeyboardCaptured != ignoreKeyboardEvents) {
+        for (auto& pad : Pads) {
+            pad.Clear(false, true);
+        }
+    } else if (s_WasMouseCaptured != ignoreMouseEvents) { // Don't release held keyboard keys
+        ClearMouseHistory();
+        for (auto& pad : Pads) {
+            pad.PCTempMouseState.Clear();
+        }
+    }
+    s_WasMouseCaptured    = ignoreMouseEvents;
+    s_WasKeyboardCaptured = ignoreKeyboardEvents;
+
+    // Clear the pads when the window gains or loses focus, like `WM_ACTIVATE` does (0x74800C)
+    if (e.type == SDL_EVENT_WINDOW_FOCUS_GAINED || e.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
+        if (PSGLOBAL(sdlWindow) && e.window.windowID == SDL_GetWindowID(PSGLOBAL(sdlWindow))) {
+            for (auto& pad : Pads) {
+                pad.Clear(false, true);
+            }
+            return true;
+        }
+    }
+
     // Mouse/keyboard events are meant to be handled by Pad 0
-    if (!ignoreMouseEvents && GetPad(0)->ProcessMouseEvent(e, TempMouseControllerState)) {
+    // Releases are processed even while the input is captured, so a key pressed before doesn't get stuck
+    if ((!ignoreMouseEvents || e.type == SDL_EVENT_MOUSE_BUTTON_UP) && GetPad(0)->ProcessMouseEvent(e, TempMouseControllerState)) {
         return true;
     }
-    if (!ignoreKeyboardEvents && GetPad(0)->ProcessKeyboardEvent(e, TempKeyState)) {
+    if ((!ignoreKeyboardEvents || e.type == SDL_EVENT_KEY_UP) && GetPad(0)->ProcessKeyboardEvent(e, TempKeyState)) {
         return true;
     }
 
