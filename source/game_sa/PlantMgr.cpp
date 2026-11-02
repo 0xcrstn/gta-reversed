@@ -324,8 +324,8 @@ void CPlantMgr::SetPlantFriendlyFlagInAtomicMI(CAtomicModelInfo* ami) {
 void CPlantMgr::Update(const CVector& cameraPosition) {
     ZoneScoped;
 
-    static auto& nUpdateEntCache = StaticRef<int8>(0xC09171);
-    static auto& nLocTriSkipCounter = StaticRef<int8>(0xC09170);
+    static auto& nUpdateEntCache    = StaticRef<uint8>(0xC09171);
+    static auto& nLocTriSkipCounter = StaticRef<uint8>(0xC09170);
 
     IncrementScanCode();
     CGrassRenderer::SetCurrentScanCode(m_scanCode);
@@ -361,9 +361,9 @@ void CPlantMgr::UpdateAmbientColor() {
     auto r = 64 + (uint32)(CTimeCycle::GetAmbientRed()   * 2.5f * 255.0f);
     auto g = 64 + (uint32)(CTimeCycle::GetAmbientGreen() * 2.5f * 255.0f);
     auto b = 64 + (uint32)(CTimeCycle::GetAmbientBlue()  * 2.5f * 255.0f);
-    m_AmbientColor.r = (uint8)std::max(r, 255u);
-    m_AmbientColor.g = (uint8)std::max(g, 255u);
-    m_AmbientColor.b = (uint8)std::max(b, 255u);
+    m_AmbientColor.r = (uint8)std::min(r, 255u);
+    m_AmbientColor.g = (uint8)std::min(g, 255u);
+    m_AmbientColor.b = (uint8)std::min(b, 255u);
 }
 
 // 0x5DB3D0
@@ -689,6 +689,7 @@ void CPlantMgr::_ProcessEntryCollisionDataSections_RemoveLocTris(const CPlantCol
                 object->m_V1,
                 object->m_V2,
                 object->m_V3,
+                object->m_Center,
                 (object->m_V1 + object->m_V2) / 2.0f,
                 (object->m_V2 + object->m_V3) / 2.0f,
                 (object->m_V1 + object->m_V3) / 2.0f
