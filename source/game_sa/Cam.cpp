@@ -347,7 +347,7 @@ void CCam::Get_TwoPlayer_AimVector(CVector& out) {
         const auto right  = CrossProduct(m_vecFront, m_vecUp);
         const auto tanFov = std::tan(m_fFOV * PI / 360.0f);
 
-        out = m_fX_Targetting * m_fY_Targetting * tanFov * right + m_vecFront - tanFov / CDraw::ms_fAspectRatio * m_vecUp;
+        out               = right * m_fX_Targetting * tanFov + m_vecFront - m_vecUp * (tanFov / CDraw::ms_fAspectRatio * m_fY_Targetting);
     }
     out.Normalise();
 }
