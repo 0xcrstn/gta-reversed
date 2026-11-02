@@ -144,18 +144,17 @@ void CCheat::AddToCheatString(char LastPressedKey) {
         return;
     }
 
-    int32 hashIndex;
-    int32 cheatStringSize = CHEAT_MIN_HASH_SIZE;
-    for (auto i = CHEAT_MIN_HASH_SIZE; i < CHEAT_STRING_SIZE; i++) {
+    // 0x4384F4: Hash the typed keys longest-first, never hashing bytes past the terminator
+    for (auto cheatStringSize = (int32)strLen; cheatStringSize >= CHEAT_MIN_HASH_SIZE; cheatStringSize--) {
         uint32 hash = CKeyGen::GetKey(m_CheatString, cheatStringSize);
-        cheatStringSize++;
 
-        hashIndex = -1;
+        int32 hashIndex = -1;
         for (int32 j = 0; j < TOTAL_CHEATS; ++j) {
             if (m_aCheatHashKeys[j] != hash) {
                 continue;
             }
             hashIndex = j;
+            break; // 0x438510: The first matching cheat wins
         }
         if (hashIndex == -1) {
             continue;
@@ -171,8 +170,8 @@ void CCheat::AddToCheatString(char LastPressedKey) {
 
         CStats::IncrementStat(STAT_TIMES_CHEATED, 1.0f);
 
-        ApplyCheat(static_cast<eCheats>(hashIndex));
         m_bHasPlayerCheated = true;
+        ApplyCheat(static_cast<eCheats>(hashIndex));
         m_CheatString[0] = '\0';
         return;
     }
