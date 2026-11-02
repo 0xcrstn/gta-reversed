@@ -140,8 +140,8 @@ void CTaskSimpleDuck::AbortBecauseOfOtherDuck(CPed* ped) {
     }
 
     if (m_MoveAnim) {
-        m_MoveAnim->m_BlendDelta = -8.0;
-        m_DuckAnim->SetDefaultFinishCallback();
+        m_MoveAnim->m_BlendDelta = -8.0f;
+        m_MoveAnim->SetDefaultFinishCallback();
         m_MoveAnim = nullptr;
     }
 
@@ -303,7 +303,7 @@ bool CTaskSimpleDuck::MakeAbortable(CPed* ped, eAbortPriority priority, CEvent c
         return true;
     }
     case ABORT_PRIORITY_URGENT: { // 0x69219B
-        if (m_ShotWhizzingCounter <= 0) {
+        if (m_ShotWhizzingCounter < 0) {
             break;
         }
         if (const auto eShotFired = notsa::dyn_cast_if_present<const CEventGunShotWhizzedBy>(event)) {
@@ -410,8 +410,8 @@ bool CTaskSimpleDuck::ProcessPed(CPed* ped) {
     if (m_bIsInControl) { // 0x69448C
         m_CountDownFrames = 4;
 
-        if (m_LengthOfDuck && CTimer::GetTimeInMS() >= m_StartTime + m_LengthOfDuck) { // 0x6944A2
-            MakeAbortable(ped);
+        if (m_LengthOfDuck && CTimer::GetTimeInMS() > m_StartTime + m_LengthOfDuck) { // 0x6944A2
+            MakeAbortable(ped, ABORT_PRIORITY_LEISURE);
         }
 
         if (m_ShotWhizzingCounter > 0) { // 0x6944C1
@@ -427,18 +427,24 @@ bool CTaskSimpleDuck::ProcessPed(CPed* ped) {
                 }
             }
         } else {
+            if (const auto tiredAnim = RpAnimBlendClumpGetAssociation(ped->GetRpClump(), ANIM_ID_IDLE_TIRED)) { // 0x6944F5
+                tiredAnim->m_BlendDelta = -2.f;
+            }
+
             m_DuckAnim = CAnimManager::BlendAnimation(
                 ped->GetRpClump(),
                 ANIM_GROUP_DEFAULT,
                 m_DuckControlType == DUCK_STANDALONE ? ANIM_ID_DUCK_COWER : ANIM_ID_WEAPON_CROUCH,
                 4.f
             );
-            m_DuckAnim->SetFinishCallback(DeleteDuckAnimCB, this);
+            m_DuckAnim->SetDeleteCallback(DeleteDuckAnimCB, this); // 0x694545
 
-            if (const auto weaponCruchAnim = RpAnimBlendClumpGetAssociation(ped->GetRpClump(), ANIM_ID_WEAPON_CROUCH)) { // 0x69454F
-                if (weaponCruchAnim->m_BlendAmount > 0 && weaponCruchAnim->m_BlendDelta >= 0.f) {
-                    if (weaponCruchAnim->m_Flags & ANIMATION_IS_PARTIAL) {
-                        weaponCruchAnim->m_BlendDelta = -4.f;
+            // Blend out the other duck anim
+            const auto otherDuckAnimId = m_DuckControlType == DUCK_STANDALONE ? ANIM_ID_WEAPON_CROUCH : ANIM_ID_DUCK_COWER;
+            if (const auto otherDuckAnim = RpAnimBlendClumpGetAssociation(ped->GetRpClump(), otherDuckAnimId)) { // 0x69454F
+                if (otherDuckAnim->m_BlendAmount > 0 && otherDuckAnim->m_BlendDelta >= 0.f) {
+                    if (otherDuckAnim->m_Flags & ANIMATION_IS_PARTIAL) {
+                        otherDuckAnim->m_BlendDelta = -4.f;
                     } else {
                         CAnimManager::BlendAnimation(ped->GetRpClump(), ANIM_GROUP_DEFAULT, ANIM_ID_IDLE, 4.f);
                     }
@@ -453,8 +459,7 @@ bool CTaskSimpleDuck::ProcessPed(CPed* ped) {
         return false;
     }
 
-    m_CountDownFrames--;
-    if (m_CountDownFrames || !MakeAbortable(ped) ) { // 0x6945EA
+    if (m_CountDownFrames-- || !MakeAbortable(ped)) { // 0x6945DE-0x6945EA: Tests the value before the decrement
         return false;
     }
 
