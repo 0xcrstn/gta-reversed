@@ -1636,8 +1636,77 @@ bool CCollision::ProcessSphereSphere(const CColSphere& spA, const CColSphere& sp
 }
 
 /*!
-* See: https://realtimecollisiondetection.net/blog/?p=103
-* 
+* @notsa
+* @brief The search for the point of the triangle closest to `point` that `TestSphereTriangle` and `ProcessSphereTriangle` inline
+*
+* The triangle is mapped into 2D (with `a` at the origin and `b` on the X axis), and `point` is classified by which side of the edges it's on:
+* If it's on the inner side of all edges it's above the face, if it's on the outer side of one edge it's closest to that edge,
+* otherwise it's closest to the vertex opposite of the edge it's on the inner side of.
+* NOTE: Unlike `ClosestPtPointTriangle` this doesn't always find the closest point (eg.: near an obtuse vertex), but that's how the original works.
+*
+* @param point       The point (The sphere's center)
+* @param distToPlane Signed distance of the point from the triangle's plane
+* @param normal      Normal of the triangle's plane
+*
+* @returns The closest point and its distance from `point`, or `std::nullopt` if `point` isn't on the inner side of any edge (Only possible for a degenerate triangle)
+*/
+static auto FindClosestPointOnTriangle(const CVector& point, float distToPlane, const CVector& normal, const CVector& a, const CVector& b, const CVector& c) -> std::optional<std::pair<CVector, float>> {
+    // Axes of the 2D space (`u` is along the AB edge)
+    const auto ab    = b - a;
+    const auto abLen = ab.Magnitude();
+    const auto u     = ab * (1.f / abLen);
+    const auto v     = u.Cross(normal);
+
+    // The points in 2D
+    const auto      ac = c - a, ap = point - a;
+    const CVector2D b2D{ abLen, 0.f };
+    const CVector2D c2D{ ac.Dot(u), ac.Dot(v) };
+    const CVector2D p2D{ ap.Dot(u), ap.Dot(v) };
+
+    // Signed (scaled) distances of the point from the edges, positive if it's on the inner side
+    const auto sideAB = b2D.Cross(p2D);
+    const auto sideCA = p2D.Cross(c2D);
+    const auto sideBC = (c2D - b2D).Cross(p2D - b2D);
+    const auto isInAB = sideAB >= 0.f, isInCA = sideCA >= 0.f, isInBC = sideBC >= 0.f;
+
+    const auto OnVertex = [&](const CVector& vtx) {
+        return std::make_pair(vtx, (point - vtx).Magnitude());
+    };
+    const auto OnEdge = [&](const CVector& v0, const CVector& v1, CVector2D v0_2D, CVector2D v1_2D, float side) {
+        const auto edge  = v1_2D - v0_2D;
+        const auto lenSq = edge.SquaredMagnitude();
+        const auto t     = (p2D - v0_2D).Dot(edge) / lenSq;
+        if (t <= 0.f) {
+            return OnVertex(v0);
+        }
+        if (t >= 1.f) {
+            return OnVertex(v1);
+        }
+        return std::make_pair(v0 + (v1 - v0) * t, std::sqrt(sq(side / std::sqrt(lenSq)) + sq(distToPlane)));
+    };
+
+    switch (isInAB + isInCA + isInBC) {
+    case 0:
+        return std::nullopt;
+    case 1: // Closest to a vertex
+        return OnVertex(isInAB ? c : (isInCA ? b : a));
+    case 2: { // Closest to an edge
+        if (!isInAB) {
+            return OnEdge(a, b, {}, b2D, sideAB);
+        }
+        if (!isInCA) {
+            return OnEdge(a, c, {}, c2D, sideCA);
+        }
+        return OnEdge(b, c, b2D, c2D, sideBC);
+    }
+    case 3: // Above the face
+        return std::make_pair(point - normal * distToPlane, std::abs(distToPlane));
+    default:
+        NOTSA_UNREACHABLE();
+    }
+}
+
+/*!
 * @addr 0x4165B0
 */
 bool CCollision::TestSphereTriangle(
@@ -1652,44 +1721,14 @@ bool CCollision::TestSphereTriangle(
         return false;
     }
 
-    const auto P = sphere.m_vecCenter;
-    const auto r = sphere.m_fRadius;
+    // Signed distance of the sphere's center from the triangle's plane
+    const auto distToPlane = plane.GetPtDotNormal(sphere.m_vecCenter);
+    if (std::abs(distToPlane) > sphere.m_fRadius) {
+        return false;
+    }
 
-    const auto A  = verts[tri.vA] - P;
-    const auto B  = verts[tri.vB] - P;
-    const auto C  = verts[tri.vC] - P;
-    const auto rr = r * r;
-    const auto N  = plane.GetNormal();
-    const int  s1 = std::abs(A.Dot(N)) > r;
-    const auto aa = A.Dot(A);
-    const auto ab = A.Dot(B);
-    const auto ac = A.Dot(C);
-    const auto bb = B.Dot(B);
-    const auto bc = B.Dot(C);
-    const auto cc = C.Dot(C);
-    const int  s2 = (aa > rr) & (ab > aa) & (ac > aa);
-    const int  s3 = (bb > rr) & (ab > bb) & (bc > bb);
-    const int  s4 = (cc > rr) & (ac > cc) & (bc > cc);
-    const auto AB = B - A;
-    const auto BC = C - B;
-    const auto CA = A - C;
-    const auto d1 = ab - aa;
-    const auto d2 = bc - bb;
-    const auto d3 = ac - cc;
-    const auto e1 = AB.Dot(AB);
-    const auto e2 = BC.Dot(BC);
-    const auto e3 = CA.Dot(CA);
-    const auto Q1 = A * e1 - d1 * AB;
-    const auto Q2 = B * e2 - d2 * BC;
-    const auto Q3 = C * e3 - d3 * CA;
-    const auto QC = C * e1 - Q1;
-    const auto QA = A * e2 - Q2;
-    const auto QB = B * e3 - Q3;
-    const int  s5 = (Q1.Dot(Q1) > rr * e1 * e1) & (Q1.Dot(QC) > 0);
-    const int  s6 = (Q2.Dot(Q2) > rr * e2 * e2) & (Q2.Dot(QA) > 0);
-    const int  s7 = (Q3.Dot(Q3) > rr * e3 * e3) & (Q3.Dot(QB) > 0);
-
-    return (s1 | s2 | s3 | s4 | s5 | s6 | s7) == 0;
+    const auto closest = FindClosestPointOnTriangle(sphere.m_vecCenter, distToPlane, plane.GetNormal(), verts[tri.vA], verts[tri.vB], verts[tri.vC]);
+    return closest && closest->second < sphere.m_fRadius;
 }
 
 // 0x416BA0
@@ -1707,36 +1746,36 @@ bool CCollision::ProcessSphereTriangle(
         return false;
     }
 
+    // Signed distance of the sphere's center from the triangle's plane
+    const auto distToPlane = plane.GetPtDotNormal(sphere.m_vecCenter);
+    if (std::abs(distToPlane) > sphere.m_fRadius) {
+        return false;
+    }
+    if (sq(distToPlane) > maxTouchDistance) {
+        return false;
+    }
+
     // Find closest point on triangle to sphere
-    const auto ip = ClosestPtPointTriangle(
-        verts[tri.vA],
-        verts[tri.vB],
-        verts[tri.vC],
-        sphere.m_vecCenter
-    );
-
-    const auto spToIp      = sphere.m_vecCenter - ip;
-    const auto touchDistSq = spToIp.SquaredMagnitude();
-
-    // Check touch distance first
-    if (touchDistSq >= maxTouchDistance) {
-        return false;
+    const CVector a = verts[tri.vA], b = verts[tri.vB], c = verts[tri.vC];
+    auto          closest = FindClosestPointOnTriangle(sphere.m_vecCenter, distToPlane, plane.GetNormal(), a, b, c);
+    if (!closest) {
+        // BUG: The original carries on with the length of the AB edge as the distance, and an uninitialized point
+        if (notsa::bugfixes::CCollision_ProcessSphereTriangle_UninitializedPoint) {
+            return false;
+        }
+        closest = std::make_pair(CVector{}, (b - a).Magnitude()); // NOTSA: Zero instead of the uninitialized point
     }
+    const auto& [ip, touchDist] = *closest;
+    const auto touchDistSq      = sq(touchDist);
 
-    // Check if it's within the sphere
-    if (touchDistSq >= sq(sphere.m_fRadius)) {
-        return false;
-    }
-
-    // Original: guard against touching exactly at the surface (touchDist == 0 leads to NaN normal)
-    if (touchDistSq <= 0.f) {
+    // Check if it's within the sphere, and the touch distance (NaN fails both, like in the original)
+    if (!(touchDist < sphere.m_fRadius) || !(touchDistSq < maxTouchDistance)) {
         return false;
     }
 
     maxTouchDistance = touchDistSq;
 
-    const auto touchDist = std::sqrt(touchDistSq);
-    colPoint.m_vecNormal = spToIp / touchDist; // Normalize
+    colPoint.m_vecNormal     = (sphere.m_vecCenter - ip).Normalized(); // NOTE: The center being on the triangle isn't rejected, the normal is (1, 0, 0) then
     colPoint.m_fDepth    = sphere.m_fRadius - touchDist;
     colPoint.m_vecPoint  = ip;
 
@@ -1747,10 +1786,10 @@ bool CCollision::ProcessSphereTriangle(
 
     colPoint.m_nSurfaceTypeB = tri.m_nMaterial;
     colPoint.m_nPieceTypeB   = 0;
-    colPoint.m_nLightingB    = tri.m_nLight;
+    // NOTE: The original doesn't write `m_nLightingB`
 
     return true;
-} 
+}
 
 // 0x417730
 bool CCollision::TestLineOfSight(

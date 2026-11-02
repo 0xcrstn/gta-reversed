@@ -61,6 +61,13 @@ inline const ReversibleBugFix AESound_UpdatePlayTime_DivisionByZero{
     .Description = "Avoid Division-by-zero in CAESound::UpdatePlayTime",
     .Credit      = "Pirulax"
 };
+inline const ReversibleBugFix CCollision_ProcessSphereTriangle_UninitializedPoint{
+    .Name        = "CCollision::ProcessSphereTriangle - Uninitialized collision point",
+    .Description = "If the sphere's center isn't on the inner side of any of the triangle's edges (only possible for a degenerate triangle) "
+                   "the original carries on with the length of an edge as the distance and an uninitialized point, and can report a collision with it. "
+                   "The fix reports no collision instead (With the fix disabled the collision is reported with a zero point)",
+    .Credit      = "Contributors"
+};
 inline const ReversibleBugFix CCarCtrl_RemoveDistantCars_UseAfterFree{
     .Name        = "CCarCtrl::RemoveDistantCars Use-After-Free",
     .Description = "Fix user-after-free of vehicles (possibly) deleted by PossiblyRemoveVehicle",
