@@ -50,7 +50,7 @@ bool CTaskSimpleCarWaitForDoorNotToBeInUse::ProcessPed(CPed* ped) {
 
 // 0x646CC0
 bool CTaskSimpleCarWaitForDoorNotToBeInUse::SetPedPosition(CPed* ped) {
-    if (ped->IsInVehicle(m_veh)) {
+    if (m_veh && ped->IsInVehicle(m_veh)) { // Without a vehicle the original doesn't touch the ped
         ped->SetPedPositionInCar();
     }
     return true;
