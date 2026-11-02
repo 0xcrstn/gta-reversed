@@ -256,8 +256,9 @@ void CTaskSimpleUseGun::AbortIK(CPed* ped) {
 
 // 0x61ED10
 void CTaskSimpleUseGun::AimGun(CPed* ped) {
-    const auto ikBlendTime = m_IsAimImmediate ? 0 : 250;
-    const auto ikSpeed     = m_IsAimImmediate ? 1.f : 0.5f;
+    const auto aimImmediate    = std::exchange(m_IsAimImmediate, false); // 0x61ED47 - Only aim immediately once
+    const auto ikBlendTime     = aimImmediate ? 0 : 250;
+    const auto ikSpeed         = aimImmediate ? 1.f : 0.5f;
 
     const auto isAimingWithArm = ped->bIsDucking || !m_WeaponInfo->flags.bAimWithArm;
     if (isAimingWithArm) {
@@ -268,7 +269,7 @@ void CTaskSimpleUseGun::AimGun(CPed* ped) {
     ped->m_pedIK.bUseArm         = !isAimingWithArm;
     ped->m_pedIK.bEverythingUsed = isAimingWithArm;
 
-    const auto DoLookAt = [this, ped](eBoneTag lookAtBone, CEntity* lookAtEntity, CVector* lookAtPos) {
+    const auto DoLookAt          = [this, ped](eBoneTag lookAtBone, CEntity* lookAtEntity, CVector* lookAtPos, bool setLookIKInUse = true) {
         g_ikChainMan.LookAt(
             "TaskUseGun",
             ped,
@@ -282,7 +283,9 @@ void CTaskSimpleUseGun::AimGun(CPed* ped) {
             3,
             false
         );
-        m_IsLookIKInUse = true;
+        if (setLookIKInUse) {
+            m_IsLookIKInUse = true;
+        }
     };
 
     const auto DoPointArm = [&, this, ped](eIKArm arm, eBoneTag armBone = BONE_UNKNOWN, CEntity* lookAtEntity = nullptr, CVector* lookAtPos = nullptr) {
@@ -301,7 +304,7 @@ void CTaskSimpleUseGun::AimGun(CPed* ped) {
     };
 
     if (m_TargetEntity) { // If there's a target entity, aim at them
-        const auto [lookAtPos, lookAtBone] = GetAimLookAtInfo(); // 0x61EDB8
+        const auto [lookAtPos, lookAtBone] = GetAimLookAtInfo(ped); // 0x61EDB8
 
         if (!ped->IsPlayer()) {
             ped->Say(CTX_GLOBAL_TARGET);
@@ -345,17 +348,17 @@ void CTaskSimpleUseGun::AimGun(CPed* ped) {
             if (m_TargetPos.x == 0.f || m_TargetPos.y == 0.f) { // TODO/NOTE: Bug? Perhaps they meant &&?
                 CVector target{0.f, 2.f, 0.f};
 
-                if (m_Anim->GetBlendAmount() > 0.98f) {
-                    DoLookAt(BONE_UNKNOWN, nullptr, &target);
+                if (m_Anim->GetBlendAmount() > 0.98f && !m_IsLookIKInUse) {
+                    DoLookAt(BONE_R_UPPER_ARM, ped, &target); // 0x61F24C - Relative to our own bone, like the arm
                 }
 
                 DoPointArm(eIKArm::IK_ARM_RIGHT, BONE_R_UPPER_ARM, ped, &target);
                 if (m_WeaponInfo->flags.bTwinPistol && !ped->bLeftArmBlocked) {
-                    DoPointArm(eIKArm::IK_ARM_LEFT, BONE_L_UPPER_ARM, ped, &target);
+                    DoPointArm(eIKArm::IK_ARM_LEFT, BONE_R_UPPER_ARM, ped, &target); // 0x61F2B3 - Also the right upper arm
                 }
             } else { // 0x61F172 - Either arm/look IK is in use, meaning there's a target
                 if (m_Anim->GetBlendAmount() > 0.98f) {
-                    DoLookAt(BONE_UNKNOWN, nullptr, &m_TargetPos);
+                    DoLookAt(BONE_UNKNOWN, nullptr, &m_TargetPos, false); // 0x61F1A7 - Doesn't set `m_IsLookIKInUse`
                 }
 
                 DoPointArm(eIKArm::IK_ARM_RIGHT, BONE_UNKNOWN, nullptr, &m_TargetPos);
@@ -366,7 +369,7 @@ void CTaskSimpleUseGun::AimGun(CPed* ped) {
         }
     } else if (m_TargetPos.x == 0.f || m_TargetPos.y == 0.f) { // 0x61F30E
         ped->m_pedIK.PointGunInDirection(
-            ped->m_fCurrentRotation,
+            ped->IsPlayer() ? ped->m_fCurrentRotation : ped->m_fLookDirection, // 0x61F33C
             ped->IsPlayer() ? ped->GetPlayerData()->m_fLookPitch : 0.f,
             false,
             m_Anim->GetBlendAmount()
@@ -376,7 +379,7 @@ void CTaskSimpleUseGun::AimGun(CPed* ped) {
     }
 
     if (m_WeaponInfo->flags.bTwinPistol && ped->bLeftArmBlocked) {
-        g_ikChainMan.AbortPointArmIfPointing(eIKArm::IK_ARM_RIGHT, ped);
+        g_ikChainMan.AbortPointArmIfPointing(eIKArm::IK_ARM_LEFT, ped); // 0x61F371
     }
 }
 
@@ -576,16 +579,17 @@ CVector CTaskSimpleUseGun::GetAimTargetPosition(CPed* ped) const {
 }
 
 // notsa
-std::pair<CVector, eBoneTag> CTaskSimpleUseGun::GetAimLookAtInfo() const {
+std::pair<CVector, eBoneTag> CTaskSimpleUseGun::GetAimLookAtInfo(const CPed* shooter) const {
     if (m_TargetEntity->GetIsTypePed()) {
         const auto targetPed = m_TargetEntity->AsPed();
-        if (const auto pd = targetPed->GetPlayerData()) {
+        if (const auto pd = shooter->GetPlayerData()) { // 0x61EDC3 - The shooter's aim offset, applied to the target's bone
             CVector ret = pd->m_vecTargetBoneOffset;
             targetPed->GetTransformedBonePosition(ret, (eBoneTag)pd->m_nTargetBone);
-            return {ret, (eBoneTag)pd->m_nTargetBone};
+            return { ret, shooter->IsPlayer() ? (eBoneTag)pd->m_nTargetBone : BONE_SPINE1 };
         }
+        return { targetPed->GetBonePosition(BONE_SPINE1), BONE_SPINE1 };
     }
-    return {m_TargetEntity->GetPosition(), BONE_SPINE1};
+    return { m_TargetEntity->GetPosition(), BONE_UNKNOWN }; // 0x61EE6F - Non-ped targets have no bone
 }
 
 // 0x624DC0
