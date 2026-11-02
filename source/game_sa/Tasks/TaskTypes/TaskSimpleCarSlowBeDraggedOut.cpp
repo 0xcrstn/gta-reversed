@@ -98,7 +98,8 @@ bool CTaskSimpleCarSlowBeDraggedOut::ProcessPed(CPed* ped) {
         m_LineUpUtility->m_nDoorOpenPosType = 2;
     }
     if (m_IsDraggedBySelf) {
-        DoOpenCarDoor(ped);
+        const auto [animGrp, animId] = ComputeAnimID();
+        m_Vehicle->ProcessOpenDoor(ped, m_Door, animGrp, animId, m_Anim->GetCurrentTime());
     }
     return false;
 }
