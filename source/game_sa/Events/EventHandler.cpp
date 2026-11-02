@@ -2354,21 +2354,20 @@ void CEventHandler::ComputeShotFiredWhizzedByResponse(CEventGunShotWhizzedBy* e,
         case TASK_NONE:
             return nullptr; // 0x4BBE91
         case TASK_SIMPLE_DUCK_WHILE_SHOTS_WHIZZING: { // 0x4BBE68
-            const auto ProcessTaskDuck = [this](CTaskSimpleDuck* tDuck) {
-                if (tDuck->m_ShotWhizzingCounter >= 0) {
-                    tDuck->RestartTask(m_Ped);
+            // Only a duck task that's still counting the shots is restarted, otherwise a new one is created (0x4BBE6A)
+            const auto TryRestartTaskDuck = [this](CTaskSimpleDuck* tDuck) {
+                if (!tDuck || tDuck->m_ShotWhizzingCounter < 0) {
+                    return false;
                 }
+                tDuck->RestartTask(m_Ped);
+                return true;
             };
 
-            if (tsimplest) {
-                if (const auto tDuck = notsa::dyn_cast_if_present<CTaskSimpleDuck>(tsimplest)) {
-                    ProcessTaskDuck(tDuck);
-                    return nullptr;
-                }
+            if (TryRestartTaskDuck(notsa::dyn_cast_if_present<CTaskSimpleDuck>(tsimplest))) {
+                return nullptr;
             }
 
-            if (const auto tDuck = m_Ped->GetIntelligence()->GetTaskDuck()) {
-                ProcessTaskDuck(tDuck);
+            if (TryRestartTaskDuck(m_Ped->GetIntelligence()->GetTaskDuck())) {
                 return nullptr;
             }
 
