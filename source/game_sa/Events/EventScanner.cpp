@@ -4,7 +4,14 @@
 
 // 0x605300
 CEventScanner::CEventScanner() {
-    m_nNextScanTime = CTimer::GetTimeInMS() + CGeneral::GetRandomNumberInRange(3000u); // Originally should be -3000.0f (float value)
+    m_attractorScanner.field_0        = 1;
+    m_attractorScanner.m_pEffectInUse = nullptr;
+    m_attractorScanner.field_14       = 0;
+    m_attractorScanner.Clear();
+
+    m_pedAcquaintanceScanner.SetOnlyScriptPedAllowed();
+
+    m_nNextScanTime = CTimer::GetTimeInMS() - CGeneral::GetRandomNumberInRange(3'000u); // NOTE: Originally a float value
 }
 
 void CEventScanner::Clear() {
