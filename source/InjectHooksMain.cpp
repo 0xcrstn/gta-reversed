@@ -684,6 +684,7 @@ void InjectHooksMain() {
     CVehicleModelInfo::InjectHooks();
     CClumpModelInfo::InjectHooks();
     CTimeModelInfo::InjectHooks();
+    CLodTimeModelInfo::InjectHooks();
     CDamageAtomicModelInfo::InjectHooks();
     CWeaponModelInfo::InjectHooks();
     CShotInfo::InjectHooks();
