@@ -87,6 +87,7 @@ void CShadowCamera::InvertRaster() {
         MkVert(width, height), // Bottom right
     };
 
+    RwRenderStateSet(rwRENDERSTATEZTESTENABLE, RWRSTATE(FALSE));
     RwRenderStateSet(rwRENDERSTATETEXTURERASTER, RWRSTATE(NULL));
     RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, RWRSTATE(TRUE));
     RwRenderStateSet(rwRENDERSTATESRCBLEND, RWRSTATE(rwBLENDINVDESTCOLOR));
@@ -423,8 +424,8 @@ RwRaster* CShadowCamera::RasterBlur(RwRaster* blurRaster, int32 numPasses) {
 
     const auto camRaster = RwCameraGetRaster(m_pRwCamera);
 
-    if (!numPasses) { // NOTSA
-        return camRaster;
+    if (!numPasses) {
+        return blurRaster; // 0x70631C: The original returns the input raster when there are no passes
     }
 
     const auto DoRenderQuad2D = [
