@@ -18,9 +18,8 @@ public:
     static void InjectHooks();
 
     using CTaskSimpleWaitUntilAreaCodesMatch::CTaskSimpleWaitUntilAreaCodesMatch;
-    CTaskSimpleWaitUntilLeaderAreaCodesMatch(const CTaskSimpleWaitUntilLeaderAreaCodesMatch& o) = default;
 
-    CTask*    Clone() const override { return new CTaskSimpleWaitUntilLeaderAreaCodesMatch{*this}; }
+    CTask*    Clone() const override { return new CTaskSimpleWaitUntilLeaderAreaCodesMatch{ m_pedToWaitFor }; } // 0x5F67F0
     eTaskType GetTaskType() const override { return Type; }
     bool      MakeAbortable(CPed* ped, eAbortPriority priority, CEvent const* event) override;
     bool      ProcessPed(CPed* ped) override;
