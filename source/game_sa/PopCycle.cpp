@@ -168,8 +168,11 @@ bool CPopCycle::FindNewPedType(ePedType& outPedType, eModelID& outPedMI, bool no
             continue;
         } else if (highestChance == gangChance) { // 0x60FF13
             outPedType = PickGangToCreateMembersOf();
-            assert(IsPedTypeGang(outPedType));
-            outPedMI = CPopulation::ChooseGangOccupation((eGangID)(outPedType - ePedType::PED_TYPE_GANG1));
+            assert(outPedType == PED_TYPE_PLAYER1 || IsPedTypeGang(outPedType));
+            // 0x60FF1C: The original `PickGangToCreateMembersOf` returns `PED_TYPE_PLAYER1` if the zone has no gangs, no gang member is chosen then
+            outPedMI = outPedType != PED_TYPE_PLAYER1
+                ? CPopulation::ChooseGangOccupation((eGangID)(outPedType - ePedType::PED_TYPE_GANG1))
+                : MODEL_INVALID;
             assert(outPedMI != MODEL_PLAYER);
             if (outPedMI >= 0) {
                 return true;
