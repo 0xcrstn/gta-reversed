@@ -80,6 +80,12 @@ inline const ReversibleBugFix CCustomCarPlateMgr_GeneratePlateText_MissingLetter
     "This fix expands those ranges to A-Z (26 chars) and 0-9 (10 chars) for more variety.",
     .Credit      = "j0y"
 };
+inline const ReversibleBugFix CCamera_StartTransition_TransitionBetaSide{
+    .Name        = "CCamera::StartTransition - Transition beta side",
+    .Description = "When switching from `MODE_CAM_ON_A_STRING` to `MODE_FOLLOWPED` the original always adds 235 degrees to the transition beta, "
+                   "because it range-checks a zero temporary instead of the camera's angle. The fix checks the angle, and adds 55 degrees instead when it's above 90 degrees",
+    .Credit      = "Contributors"
+};
 inline const ReversibleBugFix CTaskComplexLeaveCarAndFlee_MissingNullCheckForVehicleOnFlee{
     .Name        = "CTaskComplexLeaveCarAndFlee - Missing null check for vehicle on flee",
     .Description = "Fix missing null check for vehicle in CTaskComplexLeaveCarAndFlee",
