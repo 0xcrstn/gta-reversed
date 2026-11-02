@@ -20,11 +20,11 @@ void CTaskSimpleBikeJacked::InjectHooks() {
 
 // 0x648B90
 CTaskSimpleBikeJacked::CTaskSimpleBikeJacked(CVehicle* vehicle, uint32 door, uint32 time, CPed* carJacker, bool isVictimDriver) :
-    m_vehicle{vehicle},
-    m_door{door},
-    m_time{time},
-    m_isVictimDriver{isVictimDriver}
-{
+    m_vehicle{ vehicle },
+    m_door{ door },
+    m_time{ time },
+    m_jacker{ carJacker },
+    m_isVictimDriver{ isVictimDriver } {
     CEntity::SafeRegisterRef(m_vehicle);
     CEntity::SafeRegisterRef(m_jacker);
 }
@@ -93,13 +93,13 @@ bool CTaskSimpleBikeJacked::ProcessPed(CPed* ped) {
         if (!m_firstAnim &&
             [this, ped] {
                 if (m_jacker) {
-                    if (const auto anim = RpAnimBlendClumpGetAssociation(ped->GetRpClump(), { ANIM_ID_CAR_PULLOUT_RHS, ANIM_ID_CAR_PULLOUT_LHS, ANIM_ID_CAR_GETIN_BIKE_FRONT })) {
+                    if (const auto anim = RpAnimBlendClumpGetAssociation(m_jacker->GetRpClump(), { ANIM_ID_CAR_PULLOUT_RHS, ANIM_ID_CAR_PULLOUT_LHS, ANIM_ID_CAR_GETIN_BIKE_FRONT })) {
                         if (anim->m_CurrentTime <= 0.3f) {
                             return false;
                         }
                     }
 
-                    if (CGeneral::DoCoinFlip()) { // Originally: rand() % 1024 <= 512
+                    if ((CGeneral::GetRandomNumber() & 0x3FF) <= 512) { // 0x64CB27..0x64CB3D
                         if (!SayJacking(m_jacker, ped, m_vehicle)) {
                             SayJacked(ped, m_vehicle);
                         }
@@ -127,7 +127,7 @@ bool CTaskSimpleBikeJacked::ProcessPed(CPed* ped) {
         return true;
     }
 
-    CAnimManager::BlendAnimation(ped->GetRpClump(), ANIM_GROUP_DEFAULT, m_secondAnimId);
+    CAnimManager::BlendAnimation(ped->GetRpClump(), ANIM_GROUP_DEFAULT, m_secondAnimId, 100.f);
 
     // event.m_flags |= 2; => event.m_forceKnockOff = true => Already set by ctor
     ped->GetEventGroup().Add(CEventKnockOffBike{ m_vehicle, m_vehicle->GetMoveSpeed(), m_vehicle->m_vecLastCollisionImpactVelocity, 0.f, 0.f, 55u, 0u, (int32)m_time, m_jacker, m_isVictimDriver, true }, true);
