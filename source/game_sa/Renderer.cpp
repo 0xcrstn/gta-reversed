@@ -218,8 +218,10 @@ void CRenderer::ProcessLodRenderLists() {
         }
     }
 
-    bool bAllLodsRendered = false;
-    while (bAllLodsRendered) {
+    // 0x5537B0 - 0x55383D: Always does at least one pass, and repeats it after removing a LOD whose children all rendered
+    bool bAllLodsRendered;
+    do {
+        bAllLodsRendered = false;
         for (auto renderListEntry = GetLodRenderListBase(); renderListEntry != ms_pLodRenderList; renderListEntry++) {
             CEntity* entity = renderListEntry->entity;
             if (entity) {
@@ -246,7 +248,7 @@ void CRenderer::ProcessLodRenderLists() {
                 }
             }
         }
-    }
+    } while (bAllLodsRendered);
     for (auto renderListEntry = GetLodRenderListBase(); renderListEntry != ms_pLodRenderList; renderListEntry++) {
         CEntity* entity = renderListEntry->entity;
         if (entity && entity->HasLodChildrenRendered()) {
