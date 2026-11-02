@@ -648,14 +648,18 @@ void CTaskSimpleUseGun::SetMoveAnim(CPed* ped) {
 
     // 0x61E505
     if (moveCmdAbsSum < 0.1f) {
-        const auto moveAnim = m_WeaponInfo->flags.bAimWithArm
-            ? ped->IsGangster() || ped->IsCop()
+        if (m_WeaponInfo->flags.bAimWithArm) {
+            ped->SetMoveState(PEDMOVE_STILL); // 0x61E51A
+        }
+        // NOTE: The ped type range check doesn't include `PED_TYPE_GANG10`, unlike `IsGangster()`
+        const auto moveAnim      = m_WeaponInfo->flags.bAimWithArm
+            ? ped->m_nPedType >= PED_TYPE_COP && ped->m_nPedType <= PED_TYPE_GANG9
                 ? DoBlendAnim(ANIM_ID_GANG_GUNSTAND, 4.f) // Why is this used for cops? (0x61E529, inverted)
-                : DoBlendAnim(ANIM_ID_IDLE, 8.f)
+                : CAnimManager::BlendAnimation(ped->GetRpClump(), ped->m_nAnimGroup, ANIM_ID_IDLE, 8.f)
             : DoBlendAnim(ANIM_ID_GUN_STAND, 8.f);
 
         const auto resetPlayTime = moveAnim && moveAnim->GetBlendAmount() > 0.95f;
-        for (const auto anim : { animGunMoveBwd, animGunMoveL, animGunMoveR, animGunMoveBwd }) {
+        for (const auto anim : { animGunMoveFwd, animGunMoveL, animGunMoveR, animGunMoveBwd }) {
             if (anim) {
                 anim->SetFlag(ANIMATION_IS_PLAYING, false);
                 if (resetPlayTime) {
@@ -677,11 +681,11 @@ void CTaskSimpleUseGun::SetMoveAnim(CPed* ped) {
         const auto moveAnim = DoBlendAnim(
             m_MoveCmd.x > 0.75f
                 ? ANIM_ID_GUNMOVE_R
-                : m_MoveCmd.x <= -0.75f
-                    ? ANIM_ID_GUNMOVE_L
-                    : m_MoveCmd.y <= 0.f
-                        ? ANIM_ID_GUNMOVE_FWD
-                        : ANIM_ID_GUNMOVE_BWD,
+                : m_MoveCmd.x < -0.75f
+                ? ANIM_ID_GUNMOVE_L
+                : m_MoveCmd.y <= 0.f
+                ? ANIM_ID_GUNMOVE_FWD
+                : ANIM_ID_GUNMOVE_BWD,
             8.f
         );
         moveAnim->SetFlag(ANIMATION_IS_PLAYING, true);
