@@ -16,7 +16,7 @@ void CConversations::InjectHooks() {
     RH_ScopedInstall(AwkwardSay, 0x43A810);
     RH_ScopedInstall(EnableConversation, 0x43AA40);
     RH_ScopedInstall(StartSettingUpConversation, 0x43A840);
-    RH_ScopedInstall(DoneSettingUpConversation, 0x43ADB0, {.Reversed = false});
+    RH_ScopedInstall(DoneSettingUpConversation, 0x43ADB0);
 }
 
 // 0x43A7B0
@@ -154,7 +154,63 @@ void CConversations::StartSettingUpConversation(CPed* ped) {
 
 // 0x43ADB0
 void CConversations::DoneSettingUpConversation(bool bSuppressSubtitles) {
-    plugin::Call<0x43ADB0, bool>(bSuppressSubtitles);
+    const auto tempNodes = std::span{ m_aTempNodes.data(), (size_t)m_SettingUpConversationNumNodes };
+
+    // Resolve the names of the yes/no nodes to temp node indices
+    for (auto& tempNode : tempNodes) {
+        tempNode.m_NodeYes = -1;
+        tempNode.m_NodeNo  = -1;
+        for (auto&& [i, other] : rngv::enumerate(tempNodes)) {
+            if (!strcmp(tempNode.m_NameNodeYes, other.m_Name)) {
+                tempNode.m_NodeYes = (int16)i;
+            }
+            if (!strcmp(tempNode.m_NameNodeNo, other.m_Name)) {
+                tempNode.m_NodeNo = (int16)i;
+            }
+        }
+    }
+
+    // Find a free conversation slot
+    auto* const conversation = FindConversationForPed(nullptr);
+    assert(conversation); // NOTE: Not checked by the original, it writes through a null pointer below
+
+    // Allocate the final nodes
+    const auto FindFreeNodeSlot = [] {
+        for (auto&& [i, node] : rngv::enumerate(m_Nodes)) {
+            if (node.m_Name[0] == '\0') {
+                strcpy(node.m_Name, "X"); // Mark it as used
+                return (int32)i;
+            }
+        }
+        return 0; // NOTE: Slot 0 is used (without marking it) if there are no free slots
+    };
+    for (auto& tempNode : tempNodes) {
+        tempNode.m_FinalSlot = FindFreeNodeSlot();
+    }
+
+    for (const auto& tempNode : tempNodes) {
+        auto& node = m_Nodes[tempNode.m_FinalSlot];
+        strcpy(node.m_Name, tempNode.m_Name);
+        node.m_NodeYes = (int16)(tempNode.m_NodeYes >= 0 ? tempNodes[tempNode.m_NodeYes].m_FinalSlot : -1);
+        node.m_NodeNo  = (int16)(tempNode.m_NodeNo >= 0 ? tempNodes[tempNode.m_NodeNo].m_FinalSlot : -1);
+        node.m_Speech  = tempNode.m_Speech;
+        node.m_SpeechY = tempNode.m_SpeechY;
+        node.m_SpeechN = tempNode.m_SpeechN;
+    }
+
+    // NOTE: The first temp node is used even if there are no nodes
+    conversation->m_FirstNode   = m_aTempNodes[0].m_FinalSlot;
+    conversation->m_CurrentNode = m_aTempNodes[0].m_FinalSlot;
+    CEntity::SetEntityReference(conversation->m_pPed, m_SettingUpConversationPed);
+    conversation->m_LastChange                = CTimer::GetTimeInMS();
+    conversation->m_LastTimeWeWereCloseEnough = 0;
+    conversation->m_Status                    = CConversationForPed::eStatus::INACTIVE;
+    conversation->m_Enabled                   = true;
+    conversation->m_SuppressSubtitles         = bSuppressSubtitles;
+
+    // Setup done
+    m_SettingUpConversationNumNodes = 0;
+    m_SettingUpConversation         = false;
 }
 
 CConversationForPed* CConversations::FindConversationForPed(CPed* ped) {
