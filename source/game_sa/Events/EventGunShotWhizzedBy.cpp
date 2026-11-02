@@ -30,10 +30,9 @@ bool CEventGunShotWhizzedBy::AffectsPed(CPed* ped)
     if (!ped->IsPlayer() && ped->IsAlive()) {
         CVector direction = m_endPoint - m_startPoint;
         direction.Normalise();
-        CVector distance = ped->GetPosition() - m_startPoint;
-        float squaredMagnitude = (distance * direction).SquaredMagnitude();
-        if (squaredMagnitude > 0.0f) {
-            CVector2D point = (direction * squaredMagnitude) + m_startPoint;
+        const auto distAlongShot = (ped->GetPosition() - m_startPoint).Dot(direction);
+        if (distAlongShot > 0.0f) { // Peds behind the start of the shot aren't affected
+            CVector2D point = (direction * distAlongShot) + m_startPoint;
             return 2.0f * 2.0f > (ped->GetPosition() - point).SquaredMagnitude();
         }
     }
