@@ -11,6 +11,11 @@
 
 constexpr auto SENTINEL_VALUE_OF_UNUSED = (int16)(MODEL_INVALID);
 
+// The original treats any negative model ID as an unused slot, not just `SENTINEL_VALUE_OF_UNUSED`
+static bool IsUnusedSlot(int16 model) {
+    return model < 0;
+}
+
 void CLoadedCarGroup::InjectHooks() {
     RH_ScopedClass(CLoadedCarGroup);
     RH_ScopedCategoryGlobal();
@@ -27,10 +32,11 @@ void CLoadedCarGroup::InjectHooks() {
 
 // 0x611E10
 void CLoadedCarGroup::SortBasedOnUsage() {
-    // Sort from higher to lower usage
-    rng::sort(GetAllModels(), std::greater<>{}, [](int16 modelid) {
-        return CModelInfo::GetVehicleModelInfo(modelid)->m_nTimesUsed; }
-    );
+    // Sort from higher to lower usage. The original is a bubble sort, so models used equally keep their order,
+    // and it compares `m_nTimesUsed` as a signed byte
+    rng::stable_sort(GetAllModels(), std::greater<>{}, [](int16 modelid) {
+        return (int8)(CModelInfo::GetVehicleModelInfo(modelid)->m_nTimesUsed);
+    });
 }
 
 // 0x611BD0
@@ -51,16 +57,20 @@ eModelID CLoadedCarGroup::PickRandomCar(bool bNotTooManyInTheWorld, bool bOnlyPi
             return MODEL_INVALID;
         }
 
+        // The original reads `m_nFrq` as signed
         const auto weightSum = notsa::accumulate(choices, 0, [](int16 model) {
-            return CModelInfo::GetVehicleModelInfo(model)->m_nFrq;
+            return (int32)(int16)(CModelInfo::GetVehicleModelInfo(model)->m_nFrq);
         });
+        if (weightSum == 0) {
+            return MODEL_INVALID;
+        }
 
         for (auto tr{ 0 }; tr < 10; tr++) { // tr = tries
             // First, pick a model
             const auto pickedModel = [&] {
                 auto pickedWeight = CGeneral::GetRandomNumberInRange(0, weightSum);
                 for (auto modelId : choices) {
-                    const auto thisModelFrq = CModelInfo::GetVehicleModelInfo(modelId)->m_nFrq;
+                    const auto thisModelFrq = (int32)(int16)(CModelInfo::GetVehicleModelInfo(modelId)->m_nFrq);
                     if (thisModelFrq >= pickedWeight) {
                         return (eModelID)(modelId);
                     }
@@ -111,27 +121,24 @@ eModelID CLoadedCarGroup::PickRandomCar(bool bNotTooManyInTheWorld, bool bOnlyPi
 
 // 0x611E90
 eModelID CLoadedCarGroup::PickLeastUsedModel(int32 maxTimesUsed) {
-    if (Empty()) {
-        return MODEL_INVALID;
-    }
-
-    const auto GetMI = [](auto model) { return CModelInfo::GetVehicleModelInfo(model); };
-    const auto ret = rng::min(GetAllModels(), [&](int16 modelA, int16 modelB) {
-        const auto miA = GetMI(modelA), miB = GetMI(modelB);
-        if (miA->m_nRefCount < miB->m_nRefCount) { // Primary sort criteria is `m_nRefCount`
-            return true;
+    // Primary criteria is `m_nRefCount`, secondary is `m_nTimesUsed`.
+    // The search starts from 999 for both, and they're compared as `int16` and `int8` respectively
+    auto  leastUsedModel = MODEL_INVALID;
+    int32 minRefCount    = 999;
+    int32 minTimesUsed   = 999;
+    for (const auto model : GetAllModels()) {
+        const auto* const mi        = CModelInfo::GetVehicleModelInfo(model);
+        const int32       refCount  = (int16)(mi->m_nRefCount);
+        const int32       timesUsed = (int8)(mi->m_nTimesUsed);
+        if (refCount < minRefCount || (refCount == minRefCount && timesUsed < minTimesUsed)) {
+            leastUsedModel = (eModelID)(model);
+            minRefCount    = refCount;
+            minTimesUsed   = timesUsed;
         }
-        if (miA->m_nRefCount == miB->m_nRefCount) { // If that fails, secondary is `m_nTimesUsed`
-            return miA->m_nTimesUsed < miB->m_nTimesUsed;
-        }
-        return false;
-    });
-
-    if (GetMI(ret)->m_nTimesUsed <= maxTimesUsed) {
-        return (eModelID)(ret);
     }
-
-    return MODEL_INVALID;
+    return minTimesUsed <= maxTimesUsed
+        ? leastUsedModel
+        : MODEL_INVALID;
 }
 
 // 0x611C20
@@ -142,7 +149,7 @@ eModelID CLoadedCarGroup::GetMember(uint32 idx) const {
 
 // 0x611C30
 uint32 CLoadedCarGroup::CountMembers() const {
-    return (uint32)(rng::distance(m_models.begin(), rng::find(m_models, SENTINEL_VALUE_OF_UNUSED)));
+    return (uint32)(rng::distance(m_models.begin(), rng::find_if(m_models, IsUnusedSlot)));
 }
 
 // NOTSA
@@ -157,7 +164,7 @@ void CLoadedCarGroup::Clear() {
 
 // 0x611BB0
 void CLoadedCarGroup::AddMember(eModelID member) {
-    const auto end = rng::find(m_models, SENTINEL_VALUE_OF_UNUSED);
+    const auto end = rng::find_if(m_models, IsUnusedSlot);
     if (end != m_models.end()) {
         *end = (int16)(member);
     } else {
