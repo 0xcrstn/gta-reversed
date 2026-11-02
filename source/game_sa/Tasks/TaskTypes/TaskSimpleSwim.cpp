@@ -501,8 +501,8 @@ void CTaskSimpleSwim::ProcessSwimmingResistance(CPed* ped) {
         }
         return;
     }
-    default: {
-        return;
+    default: { // The original damps the move speed for any other state too
+        break;
     }
     }
 
@@ -513,7 +513,12 @@ void CTaskSimpleSwim::ProcessSwimmingResistance(CPed* ped) {
 
     auto& pedPos = ped->GetPosition();
     bool bUpdateRotationX = true;
-    CVector vecCheckWaterLevelPos = CTimer::GetTimeStep() * ped->m_vecMoveSpeed + pedPos;
+    // Only the horizontal position is predicted, the water level is queried at the current height
+    const CVector vecCheckWaterLevelPos{
+        CTimer::GetTimeStep() * ped->m_vecMoveSpeed.x + pedPos.x,
+        CTimer::GetTimeStep() * ped->m_vecMoveSpeed.y + pedPos.y,
+        pedPos.z
+    };
     float fWaterLevel = 0.0f;
     if (!CWaterLevel::GetWaterLevel(vecCheckWaterLevelPos, fWaterLevel, true)) {
         fSubmergeZ = -1.0f;
