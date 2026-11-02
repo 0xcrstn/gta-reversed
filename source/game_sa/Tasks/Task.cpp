@@ -36,7 +36,8 @@ bool CTask::IsGoToTask(CTask* task) {
 
 // 0x61A4B0
 bool CTask::IsTaskPtr(CTask* task) {
-    return task && GetTaskPool()->IsObjectValid(task);
+    auto* const pool = GetTaskPool();
+    return task && pool->IsObjectValid(task) && pool->GetAt(pool->GetIndex(task)) == task; // The original compares the exact slot addresses, pointers into a task are rejected
 }
 
 void CTask::InjectHooks() {
