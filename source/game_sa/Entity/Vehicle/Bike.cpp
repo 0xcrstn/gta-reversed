@@ -21,14 +21,14 @@ void CBike::InjectHooks() {
     RH_ScopedInstall(dmgDrawCarCollidingParticles, 0x6B5A00);
     RH_ScopedInstall(DamageKnockOffRider, 0x6B5A10);
     RH_ScopedInstall(KnockOffRider, 0x6B5F40);
-    RH_ScopedInstall(SetRemoveAnimFlags, 0x6B5F50, { .Reversed = false });
+    RH_ScopedInstall(SetRemoveAnimFlags, 0x6B5F50);
     RH_ScopedInstall(ReduceHornCounter, 0x6B5F90);
     RH_ScopedVMTInstall(ProcessAI, 0x6BC930, { .Reversed = false });
     RH_ScopedInstall(ProcessBuoyancy, 0x6B5FB0);
-    RH_ScopedInstall(ResetSuspension, 0x6B6740, { .Reversed = false });
+    RH_ScopedInstall(ResetSuspension, 0x6B6740);
     RH_ScopedInstall(GetAllWheelsOffGround, 0x6B6790);
     RH_ScopedInstall(DebugCode, 0x6B67A0);
-    RH_ScopedInstall(DoSoftGroundResistance, 0x6B6D40, { .Reversed = false });
+    RH_ScopedInstall(DoSoftGroundResistance, 0x6B6D40);
     RH_ScopedInstall(PlayHornIfNecessary, 0x6B7130);
     RH_ScopedInstall(CalculateLeanMatrix, 0x6B7150);
     RH_ScopedInstall(ProcessRiderAnims, 0x6B7280, { .Reversed = false });
@@ -275,7 +275,12 @@ CPed* CBike::KnockOffRider(eWeaponType arg0, uint8 arg1, CPed* ped, bool arg3) {
 
 // 0x6B5F50
 void CBike::SetRemoveAnimFlags(CPed* ped) {
-    ((void(__thiscall*)(CBike*, CPed*))0x6B5F50)(this, ped);
+    if (!ped->GetIsTypePed()) {
+        return;
+    }
+    for (auto anim = RpAnimBlendClumpGetFirstAssociation(ped->GetRpClump(), ANIMATION_SECONDARY_TASK_ANIM); anim; anim = RpAnimBlendGetNextAssociation(anim, ANIMATION_SECONDARY_TASK_ANIM)) {
+        anim->SetFlag(ANIMATION_IS_BLEND_AUTO_REMOVE);
+    }
 }
 
 // 0x6B5F90
@@ -524,7 +529,10 @@ void CBike::ProcessControl() {
 
 // 0x6B6740
 void CBike::ResetSuspension() {
-    ((void(__thiscall*)(CBike*))0x6B6740)(this);
+    rng::fill(m_aWheelPitchAngles, 0.0f);
+    rng::fill(m_WheelStates, WHEEL_STATE_NORMAL);
+    rng::fill(m_aWheelRatios, 1.0f);
+    rng::fill(m_WheelCounts, 0.0f);
 }
 
 // 0x6B6790
@@ -538,8 +546,37 @@ void CBike::DebugCode() {
 }
 
 // 0x6B6D40
-void CBike::DoSoftGroundResistance(uint32& arg0) {
-    ((void(__thiscall*)(CBike*, uint32&))0x6B6D40)(this, arg0);
+void CBike::DoSoftGroundResistance(uint32& extraHandlingFlags) {
+    const auto IsAnyWheelTouchingSand = [this] {
+        for (auto i = 0; i < NUM_SUSP_LINES; i++) {
+            if (m_aWheelRatios[i] < 1.0f && g_surfaceInfos.GetAdhesionGroup(m_aWheelColPoints[i].m_nSurfaceTypeB) == ADHESION_GROUP_SAND) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto IsAnyWheelTouchingRailTrack = [this] {
+        for (auto i = 0; i < NUM_SUSP_LINES; i++) {
+            if (m_aWheelRatios[i] < 1.0f && m_aWheelColPoints[i].m_nSurfaceTypeB == SURFACE_RAILTRACK) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    if (IsAnyWheelTouchingSand()) {
+        CVector speed = m_vecMoveSpeed - GetUp() * m_vecMoveSpeed.Dot(GetUp());
+        if (m_GasPedal > 0.3f) {
+            if (speed.SquaredMagnitude() < sq(0.3f)) {
+                extraHandlingFlags += 4; // NOTE: The original adds this (unknown) flag instead of OR-ing it
+            }
+            speed -= GetForward() * speed.Dot(GetForward());
+        }
+        ApplyMoveForce(speed * -(CTimer::GetTimeStep() * m_fMass * 0.02f));
+    } else if (IsAnyWheelTouchingRailTrack()) {
+        const CVector speed = m_vecMoveSpeed - GetUp() * m_vecMoveSpeed.Dot(GetUp());
+        ApplyMoveForce(speed * -(CTimer::GetTimeStep() * m_fMass * CVehicle::ms_fRailTrackResistance));
+    }
 }
 
 // 0x6B7130
