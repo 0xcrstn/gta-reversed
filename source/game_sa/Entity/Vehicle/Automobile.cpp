@@ -5823,11 +5823,10 @@ void CAutomobile::PlaceOnRoadProperly()
             fColZ = colPoint.m_vecPoint.z;
             m_pEntityWeAreOn = colEntity;
 
-            m_FrontCollPoly.ligthing = colPoint.m_nLightingB;
-            vecFrontCheck.z = fColZ;
+            bColFoundFront      = true;
         }
     }
-    else if (bColFoundFront) {
+    if (bColFoundFront) { // 0x6AF5E5: Also if the lower line hit, but farther away than the upper one
         m_FrontCollPoly.ligthing = colPoint.m_nLightingB;
         vecFrontCheck.z = fColZ;
     }
@@ -5850,11 +5849,10 @@ void CAutomobile::PlaceOnRoadProperly()
             fColZ = colPoint.m_vecPoint.z;
             m_pEntityWeAreOn = colEntity;
 
-            m_RearCollPoly.ligthing = colPoint.m_nLightingB;
-            vecRearCheck.z = fColZ;
+            bColFoundRear       = true;
         }
     }
-    else if (bColFoundRear) {
+    if (bColFoundRear) { // 0x6AF725: Same as above
         m_RearCollPoly.ligthing = colPoint.m_nLightingB;
         vecRearCheck.z = fColZ;
     }
