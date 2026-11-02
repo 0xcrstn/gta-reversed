@@ -2268,7 +2268,9 @@ bool CEntity::IsEntityOccluded() {
     };
 
     return rng::any_of(COcclusion::GetActiveOccluders(), [&](const auto& o) -> bool {
-        if (o.GetDistToCam() >= centerScrPos.z - boundingRadius) {
+        // The original reads the stored depth sign-extended (MOVSX at 0x71FB96), it's negative for occluders close to the camera
+        const auto distToCam = static_cast<float>(static_cast<int16>(o.m_DistToCam));
+        if (distToCam >= centerScrPos.z - boundingRadius) {
             return false;
         }
 
