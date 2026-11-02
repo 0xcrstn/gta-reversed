@@ -27,7 +27,6 @@ CTaskComplexFollowLeaderAnyMeans::CTaskComplexFollowLeaderAnyMeans(CPedGroup* pe
     m_ped{ped},
     m_pos{pos}
 {
-    DebugBreak(); // Pirulax: Let me know if this is ever hit, cause this task is seemingly unused.
     CEntity::SafeRegisterRef(m_ped);
 }
 
@@ -74,7 +73,7 @@ CTask* CTaskComplexFollowLeaderAnyMeans::CreateNextSubTask(CPed* ped) {
                 : TASK_SIMPLE_STAND_STILL;
         case TASK_SIMPLE_STAND_STILL:
         case TASK_SIMPLE_CAR_DRIVE_TIMED:
-            return ped->bInVehicle
+            return m_ped->bInVehicle // 0x696CE9: The leader's
                 ? TASK_COMPLEX_SEEK_ENTITY_ANY_MEANS
                 : TASK_COMPLEX_FOLLOW_LEADER_IN_FORMATION;
         default:
@@ -94,7 +93,7 @@ CTask* CTaskComplexFollowLeaderAnyMeans::ControlSubTask(CPed* ped) {
         return nullptr;
     }
     if (m_pSubTask->GetTaskType() == TASK_COMPLEX_FOLLOW_LEADER_IN_FORMATION) {
-        if (ped->bInVehicle) {
+        if (m_ped->bInVehicle) { // 0x696DC2: The leader's
             return CreateSubTask(TASK_COMPLEX_SEEK_ENTITY_ANY_MEANS, ped);
         }
     }
