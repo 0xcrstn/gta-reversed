@@ -832,7 +832,8 @@ RpMaterial* MaterialUpdateUVAnimCB(RpMaterial* material, void* data) {
 // to make it point in the direction of the current wind
 // 0x532DB0
 void CEntity::BuildWindSockMatrix() {
-    auto vecWindDir = CVector(CWeather::WindDir.x + 0.01F, CWeather::WindDir.y + 0.01F, 0.1F);
+    // Only X/Y of the wind direction are negated (the sock points downwind), Z is a fixed 0.1
+    auto vecWindDir = CVector(-(CWeather::WindDir.x + 0.01F), -(CWeather::WindDir.y + 0.01F), 0.1F);
 
     auto forward = vecWindDir;
     forward.Normalise();
@@ -871,7 +872,7 @@ bool CEntity::LivesInThisNonOverlapSector(int32 x, int32 y) {
 void CEntity::SetupBigBuilding() {
     SetUsesCollision(false);
     m_bIsBIGBuilding = true;
-    m_bStreamingDontDelete = true;
+    m_bDontCastShadowsOn = true; // 0x10000, not `m_bStreamingDontDelete` (0x400)
     GetModelInfo()->SetOwnsColModel(true);
 }
 
@@ -1403,7 +1404,7 @@ void CEntity::ModifyMatrixForBannerInWind() {
     }
 
     auto vecPos = CVector2D(GetPosition());
-    auto uiOffset = static_cast<uint16>(16 * (CTimer::GetTimeInMS() + (static_cast<uint16>(vecPos.x + vecPos.y) * 64)));
+    auto uiOffset = static_cast<uint16>(16 * (CTimer::GetTimeInMS() + static_cast<int32>(vecPos.x + vecPos.y) * 64));
 
     float wind;
     if (CWeather::Wind < 0.1f) {
@@ -1418,7 +1419,7 @@ void CEntity::ModifyMatrixForBannerInWind() {
     uint32 uiIndex = uiOffset / 2'048;
     auto   fWindOffset = (1.0F - fContrib) * CWeather::saBannerWindOffsets[uiIndex];
     fWindOffset += fContrib * CWeather::saBannerWindOffsets[(uiIndex + 1) & 0x1F];
-    fWindOffset *= CWeather::Wind;
+    fWindOffset *= wind;
 
     auto fZPos = sqrt(1.0F - pow(fWindOffset, 2.0F));
 
@@ -1478,10 +1479,11 @@ void CEntity::CalculateBBProjection(CVector* point1, CVector* point2, CVector* p
 
     // Calculate the lengths of the projections of the object's local axes. This allows for scaling to be taken into account,
     // since when scaling is present, the lengths of the right, forward, and up vectors will differ from 1
+    // NOTE: The original takes the 2D lengths here (the Z components are ignored)
     const auto [lengthProjX, lengthProjY, lengthProjZ] = std::make_tuple(
-        right.Magnitude(),
-        forward.Magnitude(),
-        up.Magnitude()
+        right.Magnitude2D(),
+        forward.Magnitude2D(),
+        up.Magnitude2D()
     );
 
     // Get bounding box
