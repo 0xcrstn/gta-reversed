@@ -352,11 +352,18 @@ void CTaskSimplePlayerOnFoot::ProcessPlayerWeapon(CPlayerPed* player) {
                             if (CTaskSimpleUseGun::RequirePistolWhip(player, targetedObject)) {
                                 return eGunCommand::PISTOLWHIP;
                             }
-                            if (player->GetActiveWeapon().m_State == 2) {
+                            if (player->GetActiveWeapon().m_State == WEAPONSTATE_RELOADING) {
+                                // 0x686308: Without an aim request the reloading gun task is left alone
+                                if (!pad->GetTarget() && !targetedObject && !playerData->m_bFreeAiming) {
+                                    return eGunCommand::NONE;
+                                }
                                 return eGunCommand::AIM;
                             }
                             return eGunCommand::FIRE;
                         }();
+                        if (gunCmd == eGunCommand::NONE) {
+                            break;
+                        }
                         CTask* secondaryTask = taskManager->GetTaskSecondary(TASK_SECONDARY_ATTACK);
                         if (secondaryTask) {
                             if (secondaryTask->GetTaskType() == TASK_SIMPLE_USE_GUN) {
@@ -580,8 +587,8 @@ void CTaskSimplePlayerOnFoot::ProcessPlayerWeapon(CPlayerPed* player) {
 
                 if (CWeaponInfo::GetWeaponInfo(activeWeapon->m_Type, eWeaponSkill::STD)->m_nWeaponFire == WEAPON_FIRE_INSTANT_HIT) {
                     targetedEntity = (CPed*)player->m_pTargetedObject;
-                    if (targetedEntity && targetedEntity->GetIsTypePed() && intelligence->IsInSeeingRange(player->GetPosition())) {
-                        CTask* activePrimaryTask = intelligence->GetActivePrimaryTask();
+                    if (targetedEntity && targetedEntity->GetIsTypePed() && targetedEntity->GetIntelligence()->IsInSeeingRange(player->GetPosition())) {
+                        CTask* activePrimaryTask = targetedEntity->GetIntelligence()->GetActivePrimaryTask();
                         if (!activePrimaryTask || activePrimaryTask->GetTaskType() != TASK_COMPLEX_REACT_TO_GUN_AIMED_AT) {
                             if (activeWeapon->m_Type != WEAPON_PISTOL_SILENCED) {
                                 player->Say(CTX_GLOBAL_PULL_GUN);
@@ -595,7 +602,7 @@ void CTaskSimplePlayerOnFoot::ProcessPlayerWeapon(CPlayerPed* player) {
                                 }
                             } else {
                                 CEventGunAimedAt eventGunAimedAt(player);
-                                intelligence->m_eventGroup.Add(&eventGunAimedAt, false);
+                                targetedEntity->GetIntelligence()->m_eventGroup.Add(&eventGunAimedAt, false);
                             }
                         }
                     }
