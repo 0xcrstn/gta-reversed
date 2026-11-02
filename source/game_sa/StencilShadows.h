@@ -26,7 +26,7 @@ public:
     static void RenderForObject(CStencilShadowObject*);
     static void Render(const CRGBA& color);
     static void RenderBuffer(const CVector& pos);
-    static void SunSetPositionFromEntity(const CEntity* entity);
+    static bool SunSetPositionFromEntity(const RwObject* object);
 
     static void sub_710CC0(int32 indices, int32 vertices);
 };

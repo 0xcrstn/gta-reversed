@@ -96,11 +96,13 @@ void CStencilShadows::Render(const CRGBA& color) {
 
 // unused
 // 0x710AF0
-void CStencilShadows::SunSetPositionFromEntity(const CEntity* entity) {
-    if (!entity) {
-        return;
+bool CStencilShadows::SunSetPositionFromEntity(const RwObject* object) {
+    if (!object) {
+        return false;
     }
-    s_SunPosNrm = entity->GetPosition().Normalized();
+    // Not a `CEntity`: the original reads the pointer at +4 and the vector at +0x30 of that, i.e. the `at` vector of the object's frame
+    s_SunPosNrm = CVector{ RwFrameGetMatrix(static_cast<RwFrame*>(rwObjectGetParent(object)))->at }.Normalized();
+    return true;
 }
 
 // 0x710B50
