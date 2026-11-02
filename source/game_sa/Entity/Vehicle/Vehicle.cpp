@@ -441,7 +441,6 @@ void CVehicle::SetModelIndex(uint32 index) {
         vehicleFlags.bIsRCVehicle = true;
         break;
     default:
-        vehicleFlags.bCreatedAsPoliceVehicle = false;
         vehicleFlags.bIsRCVehicle = false;
         break;
     }
@@ -1031,7 +1030,7 @@ bool CVehicle::CanPedStepOutCar(bool bIgnoreSpeedUpright) const {
         return true;
 
     if (bIgnoreSpeedUpright)
-        return m_vecTurnSpeed.SquaredMagnitude() > 0.0004F;
+        return m_vecTurnSpeed.SquaredMagnitude() <= 0.0004F;
 
     return m_vecMoveSpeed.Magnitude2D() <= 0.01F &&
            std::fabs(m_vecMoveSpeed.z) <= 0.05F &&
@@ -1245,7 +1244,7 @@ bool CVehicle::CustomCarPlate_TextureCreate(CVehicleModelInfo* model) {
 
     if (const auto text = model->GetCustomCarPlateText()) {
         m_pCustomCarPlate = CCustomCarPlateMgr::CreatePlateTexture(text, model->m_nPlateType);
-        model->SetCustomCarPlateText(text);
+        model->SetCustomCarPlateText(nullptr); // The custom text is only used once
         model->m_nPlateType = -1;
     } else {
         m_pCustomCarPlate = RpMaterialGetTexture(model->m_pPlateMaterial);
@@ -1339,8 +1338,10 @@ void CVehicle::ProcessDelayedExplosion() {
         return;
     }
 
-    const auto period = (int16)(CTimer::GetTimeStep() * (100.0f / 6.0f));
-    m_wBombTimer = std::max(m_wBombTimer - period, 0);
+    // The original compares and subtracts unsigned, against the full 32-bit step
+    const auto timer  = (uint16)m_wBombTimer;
+    const auto period = (uint32)(int32)(CTimer::GetTimeStep() * (100.0f / 6.0f));
+    m_wBombTimer      = timer <= period ? 0 : (int16)(timer - period);
 
     if (!m_wBombTimer) {
         BlowUpCar(m_pWhoDetonatedMe, false);
@@ -2457,9 +2458,10 @@ void CVehicle::AddReplacementUpgrade(int32 modelIndex, int32 nodeId) {
 
 // 0x6D39E0
 void CVehicle::RemoveReplacementUpgrade(int32 frameId) {
-    auto frameOfUpgrade = CClumpModelInfo::GetFrameFromId(GetRpClump(), frameId);
-    RwFrameForAllObjects(frameOfUpgrade, RemoveObjectsCB, &frameOfUpgrade);
-    RwFrameForAllChildren(frameOfUpgrade, RemoveObjectsCB, &frameOfUpgrade);
+    const auto frameOfUpgrade = CClumpModelInfo::GetFrameFromId(GetRpClump(), frameId);
+    int32      atomicId       = 0; // `RemoveObjectsCB` writes an atomic id here
+    RwFrameForAllObjects(frameOfUpgrade, RemoveObjectsCB, &atomicId);
+    RwFrameForAllChildren(frameOfUpgrade, RemoveObjectsCB, &atomicId);
 
     CopyObjectsCB_TargetClump = GetRpClump();
     RwFrameForAllObjects(
