@@ -404,8 +404,9 @@ int32 CStreaming::GetNextFileOnCd(uint32 streamLastPosn, bool bNotPriority) {
         return nextModelId;
     }
 
+    // No priority request could be loaded, so try again with all requests
     ms_numPriorityRequests = 0;
-    return MODEL_INVALID;
+    return GetNextFileOnCd(streamLastPosn, false);
 }
 
 // 0x407F00
