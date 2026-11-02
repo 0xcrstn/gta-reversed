@@ -75,22 +75,24 @@ void CTaskSimpleCarDrive::TriggerIK(CPed* ped) const {
         return;
     }
 
-    // Made an early-out of this, as this same code is used in both possible cases.
-    if (g_ikChainMan.IsLooking(ped) || CGeneral::GetRandomNumberInRange(0, 100) >= 5) {
-        return;
-    }
-
+    // NOTE: The IK and random number checks are done in the cases, so other missions don't draw a random number
     switch (m_pVehicle->m_autoPilot.m_nCarMission) {
     case MISSION_RAMPLAYER_FARAWAY:
     case MISSION_RAMPLAYER_CLOSE:
     case MISSION_BLOCKPLAYER_FARAWAY:
     case MISSION_BLOCKPLAYER_CLOSE:
     case MISSION_BLOCKPLAYER_HANDBRAKESTOP: { // Make ped look at player ped
+        if (g_ikChainMan.IsLooking(ped) || CGeneral::GetRandomNumberInRange(0, 100) >= 5) {
+            return;
+        }
         g_ikChainMan.LookAt("DriveCar", ped, FindPlayerPed(0), 3000, BONE_HEAD, nullptr, false, 0.25f, 500, 3, false);
         break;
     }
     case MISSION_RAMCAR_FARAWAY:
     case MISSION_RAMCAR_CLOSE: {
+        if (g_ikChainMan.IsLooking(ped) || CGeneral::GetRandomNumberInRange(0, 100) >= 5) {
+            return;
+        }
         if (const auto vehTargetCar = m_pVehicle->m_autoPilot.m_TargetEntity) {
             if (vehTargetCar->GetIsTypeVehicle()) {
                 if (const auto driver = vehTargetCar->m_pDriver) { // Make ped look at target car or it's driver (if any)

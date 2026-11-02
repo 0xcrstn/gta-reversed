@@ -29,12 +29,12 @@ public:
     CTaskTimer                    m_copCarStolenTimer;
 
     // Inited according to: 0x63C3AE
-    uint8 m_b01 : 1;
-    uint8 m_b02 : 1;
+    uint8 m_b01 : 1 {};
+    uint8 m_b02 : 1 {};
     uint8 m_bUpdateCurrentVehicle : 1; // m_bUpdateCurrentVehicle : 1; // updates m_pVehicle pointer to the current occupied vehicle by ped
     uint8 m_b08 : 1;
-    uint8 m_b10 : 1;
-    uint8 m_b20 : 1;
+    uint8 m_b10 : 1 {};
+    uint8 m_b20 : 1 {};
 
 public:
     static constexpr auto Type = TASK_SIMPLE_CAR_DRIVE;
