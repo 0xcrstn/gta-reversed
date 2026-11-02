@@ -159,7 +159,8 @@ void CPedGroupIntelligence::Process() {
     }
 
     bool hasMemberListChanged{};
-    for (auto&& [i, mem] : rngv::enumerate(m_pPedGroup->GetMembership().GetMembers())) {
+    for (int32 i = 0; i < TOTAL_PED_GROUP_MEMBERS; i++) { // Every slot, empty ones too, as the task pairs are indexed by member ID
+        auto* const mem = m_pPedGroup->GetMembership().GetMember(i);
         if (m_PedTaskPairs[i].Ped == mem) {
             continue;
         }
