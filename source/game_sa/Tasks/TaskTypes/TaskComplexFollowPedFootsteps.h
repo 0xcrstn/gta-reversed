@@ -29,6 +29,8 @@ public:
     CTask* ControlSubTask(CPed* ped) override;
     virtual CTask* CreateSubTask(eTaskType taskType, CPed* ped);
 
+    bool IsFarFromTargetPed(const CPed* ped) const; // NOTSA
+
 private:
     friend void InjectHooksMain();
     static void InjectHooks();
