@@ -47,8 +47,7 @@ CTaskComplexAvoidOtherPedWhileWandering::CTaskComplexAvoidOtherPedWhileWandering
 }
 
 CTaskComplexAvoidOtherPedWhileWandering::CTaskComplexAvoidOtherPedWhileWandering(const CTaskComplexAvoidOtherPedWhileWandering& o) :
-    CTaskComplexAvoidOtherPedWhileWandering{m_PedToAvoid, m_TargetPt, m_MoveState, o.m_IsMovingTarget}
-{
+    CTaskComplexAvoidOtherPedWhileWandering{ o.m_PedToAvoid, o.m_TargetPt, o.m_MoveState, o.m_IsMovingTarget } {
 }
 
 // 0x6721B0
