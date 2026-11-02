@@ -56,7 +56,7 @@ void CTrain::InjectHooks() {
     RH_ScopedInstall(RemoveAllTrains, 0x6F6AA0);
     RH_ScopedInstall(ReleaseMissionTrains, 0x6F6B60);
     RH_ScopedInstall(FindClosestTrackNode, 0x6F6BD0, { .Reversed = false });
-    RH_ScopedInstall(FindPositionOnTrackFromCoors, 0x6F6CC0, { .Reversed = false });
+    RH_ScopedInstall(FindPositionOnTrackFromCoors, 0x6F6CC0);
     RH_ScopedInstall(FindNearestTrain, 0x6F7090, { .Reversed = false });
     RH_ScopedInstall(SetNewTrainPosition, 0x6F7140);
     RH_ScopedInstall(IsNextStationAllowed, 0x6F7260, { .Reversed = false });
@@ -70,7 +70,7 @@ void CTrain::InjectHooks() {
     RH_ScopedGlobalInstall(ProcessTrainAnnouncements, 0x6F5910);
     RH_ScopedGlobalInstall(PlayAnnouncement, 0x6F5920);
     RH_ScopedGlobalInstall(MarkSurroundingEntitiesForCollisionWithTrain, 0x6F6640);
-    RH_ScopedGlobalInstall(TrainHitStuff<CPtrListSingleLink<CPhysical*>>, 0x6F5CF0, { .Reversed = false });
+    RH_ScopedGlobalInstall(TrainHitStuff<CPtrListSingleLink<CPhysical*>>, 0x6F5CF0);
 }
 
 // 0x6F6030
@@ -337,7 +337,24 @@ void MarkSurroundingEntitiesForCollisionWithTrain(CVector pos, float radius, CEn
 // 0x6F5CF0
 template<typename PtrListType>
 void TrainHitStuff(PtrListType& ptrList, CEntity* entity) {
-    ((void(__cdecl*)(PtrListType&, CEntity*))0x6F5CF0)(ptrList, entity);
+    for (auto* const physical : ptrList) {
+        if (physical == entity) {
+            continue;
+        }
+        physical->physicalFlags.bProcessCollisionEvenIfStationary = true;
+
+        // Static magno crane objects start moving
+        if (!physical->GetIsTypeObject() || !physical->GetIsStatic()) {
+            continue;
+        }
+        const auto modelId = physical->GetModelId();
+        if (modelId != ModelIndices::MI_OBJECTFORMAGNOCRANE1 && modelId != ModelIndices::MI_OBJECTFORMAGNOCRANE2 && modelId != ModelIndices::MI_OBJECTFORMAGNOCRANE3) {
+            continue;
+        }
+        physical->SetIsStatic(false);
+        physical->AddToMovingList();
+        physical->m_nFakePhysics = 0;
+    }
 }
 
 // 0x6F6850
@@ -402,7 +419,38 @@ int32 CTrain::FindClosestTrackNode(CVector posn, int32* outTrackId) {
 
 // 0x6F6CC0
 void CTrain::FindPositionOnTrackFromCoors() {
-    ((void(__thiscall*)(CTrain*))0x6F6CC0)(this);
+    const auto numNodes = NumTrackNodes[m_nTrackId];
+    for (auto nodeIdx = 0; nodeIdx < numNodes; nodeIdx++) {
+        auto& node     = pTrackNodes[m_nTrackId][nodeIdx];
+        auto& nextNode = pTrackNodes[m_nTrackId][(nodeIdx + 1) % numNodes];
+
+        // Project our position onto the track between the 2 nodes
+        const CVector2D start = node.GetPosn();
+        const CVector2D end   = nextNode.GetPosn();
+        const auto      dir   = end - start;
+        const auto      len   = CVector2D::Dist(start, end);
+        const auto      t     = (CVector2D{ GetPosition() } - start).Dot(dir) / (len * len); // NOTE: Squared length from the (rooted) length, like the original
+        if (!(t > 0.001f && t < 1.001f)) {
+            continue;
+        }
+
+        if (CVector2D::Dist(start + dir * t, GetPosition()) < 3.0f) {
+            const auto startDist   = node.GetDistanceFromStart();
+            m_fCurrentRailDistance = startDist + (nextNode.GetDistanceFromStart() - startDist) * t - GetModelInfo()->GetColModel()->GetBoundingBox().GetLength() * 0.5f;
+            if (m_fCurrentRailDistance < 0.0f) {
+                m_fCurrentRailDistance += arrTotalTrackLength[m_nTrackId];
+            }
+
+            const auto speed = m_vecMoveSpeed.Magnitude();
+            m_fTrainSpeed    = (CVector{ dir }.Dot(m_vecMoveSpeed) > 0.0f) == (bool)trainFlags.bClockwiseDirection ? -speed : speed;
+            return;
+        }
+
+        // NOTE: The original only updates the lighting for the segments we're too far from
+        const auto lighting         = node.GetLightingFromCollision().GetCurrentLighting();
+        const auto nextLighting     = nextNode.GetLightingFromCollision().GetCurrentLighting();
+        m_fContactSurfaceBrightness = lighting + (nextLighting - lighting) * t;
+    }
 }
 
 // 0x6F7090
