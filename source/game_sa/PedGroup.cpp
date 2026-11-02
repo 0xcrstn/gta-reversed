@@ -4,6 +4,7 @@
 #include <TaskSimpleCarSetPedOut.h>
 #include <TaskComplexFollowLeaderInFormation.h>
 #include <TaskSimpleGoToPoint.h>
+#include <TaskComplexEnterCar.h>
 
 //! @addr 0x5FB010
 //! @returns Distance of the furthest follower from the leader (`0.f` if there's no leader or no followers)
@@ -61,12 +62,13 @@ bool CPedGroup::IsAnyoneUsingCar(const CVehicle* vehicle) {
         if (mem->GetVehicleIfInOne() == vehicle) {
             return true;
         }
-        // I did a slight change here.
-        // Game originally checked both EnterAsDriver and EnterAsPassenger tasks
-        // but that makes no sense, as the ped can't have both tasks at the same time (I hope)
-        // So the function below returns the target vehicle of the first task found
-        if (mem->GetIntelligence()->GetEnteringVehicle() == vehicle) {
-            return true;
+        // Both tasks are checked, even if the first one found targets another car
+        for (const auto taskType : { TASK_COMPLEX_ENTER_CAR_AS_DRIVER, TASK_COMPLEX_ENTER_CAR_AS_PASSENGER }) {
+            if (const auto task = mem->GetIntelligence()->FindTaskByType(taskType)) {
+                if (static_cast<CTaskComplexEnterCar*>(task)->GetTargetCar() == vehicle) {
+                    return true;
+                }
+            }
         }
     }
     return false;
@@ -74,11 +76,11 @@ bool CPedGroup::IsAnyoneUsingCar(const CVehicle* vehicle) {
 
 // 0x5F7CC0
 void CPedGroup::PlayerGaveCommand_Attack(CPed* playerPed, CPed* target) {
-    if (!m_groupIntelligence.AddEvent(CEventGroupEvent{ playerPed, new CEventPlayerCommandToGroup{PLAYER_GROUP_COMMAND_ATTACK, target} })) {
+    if (!m_groupIntelligence.AddEvent(CEventGroupEvent{ playerPed, new CEventPlayerCommandToGroupAttack{ target } })) {
         return;
     }
     if (target && target->m_nPedType != PED_TYPE_GANG2) {
-        target->Say(target->IsGangster() ? CTX_GLOBAL_ORDER_ATTACK_MANY : CTX_GLOBAL_ORDER_ATTACK_SINGLE);
+        playerPed->Say(target->IsGangster() ? CTX_GLOBAL_ORDER_ATTACK_MANY : CTX_GLOBAL_ORDER_ATTACK_SINGLE); // 0x5F7D80
     }
 }
 
@@ -124,7 +126,7 @@ void CPedGroup::Teleport(const CVector& pos) {
         leader->Teleport(pos, false);
     }
 
-    if (const auto oe = m_groupIntelligence.GetCurrentEvent(); !oe || oe->GetEventType() == EVENT_LEADER_ENTRY_EXIT) {
+    if (const auto oe = m_groupIntelligence.GetCurrentEvent(); oe && oe->GetEvent().GetEventType() == EVENT_LEADER_ENTRY_EXIT) {
         return;
     }
 
@@ -142,13 +144,14 @@ void CPedGroup::Teleport(const CVector& pos) {
         }
     }
 
-    // Teleport *followers*
+    // Teleport *followers* [The formation offset is picked by the member ID]
     const auto& offsets = CTaskComplexFollowLeaderInFormation::ms_offsets.Offsets;
-    for (auto&& [offsetIdx, f] : rngv::enumerate(GetMembership().GetFollowers())) {
-        if (!f->IsAlive()) {
+    for (auto memberId = 0; memberId < TOTAL_PED_GROUP_FOLLOWERS; memberId++) {
+        auto* const f = GetMembership().GetMember(memberId);
+        if (!f || !f->IsAlive()) {
             continue;
         }
-        f->Teleport(pos + CVector{ offsets[offsetIdx] }, false);
+        f->Teleport(pos + CVector{ offsets[memberId] }, false);
         f->PositionAnyPedOutOfCollision();
         f->GetTaskManager().AbortFirstPrimaryTaskIn({ TASK_PRIMARY_PHYSICAL_RESPONSE, TASK_PRIMARY_EVENT_RESPONSE_TEMP, TASK_PRIMARY_EVENT_RESPONSE_NONTEMP }, f);
     }
