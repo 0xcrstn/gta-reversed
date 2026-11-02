@@ -270,7 +270,7 @@ void CVehicleModelInfo::SetVehicleComponentFlags(RwFrame* component, uint32 flag
     tVehicleComponentFlagsUnion flagsUnion;
     flagsUnion.m_nFlags = flags;
 
-    auto handling = &gHandlingDataMgr.m_aVehicleHandling[m_nHandlingId];
+    auto handling       = &gHandlingDataMgr.m_aVehicleHandling[(uint8)m_nHandlingId]; // The original only reads the low byte (`movzx edi, byte ptr [ecx+4Ah]`)
     if (flagsUnion.bCull)
         RwFrameForAllObjects(component, SetAtomicFlagCB, (void*)eAtomicComponentFlag::ATOMIC_FLAT);
 
