@@ -69,16 +69,16 @@ CTask* CTaskComplexPassObject::CreateNextSubTask(CPed* ped) {
 // 0x6613A0
 CTask* CTaskComplexPassObject::CreateFirstSubTask(CPed* ped) {
     if (m_ped && !m_ped->IsPlayer() && !ped->IsPlayer()) {
-        // Find entity to pass
+        // Find entity to pass (The passer may not be holding anything)
         {
             const auto passer = m_isPasser ? ped : m_ped;
             m_entityToPass = passer->GetEntityThatThisPedIsHolding();
-            assert(m_entityToPass);
-            CEntity::RegisterReference(m_entityToPass);
+            CEntity::SafeRegisterRef(m_entityToPass);
         }
         if (const auto pedToOther = (m_ped->GetPosition() - ped->GetPosition()); sq(1.5f) >= pedToOther.SquaredMagnitude()) {
-            m_targetPos = m_ped->GetPosition() + pedToOther / 2.f; // Position intbetween the 2 peds
-            return new CTaskComplexTurnToFaceEntityOrCoord{ m_targetPos }; 
+            m_timer.Start(1'000);
+            m_targetPos = m_ped->GetPosition() + pedToOther / 2.f; // NOTE: This is half way *past* `m_ped`, not between the 2 peds
+            return new CTaskComplexTurnToFaceEntityOrCoord{ m_ped };
         }
     }
     AbortIK(ped);
