@@ -18,6 +18,8 @@
 #include "TaskComplexEnterCarAsDriver.h"
 #include "TaskComplexEnterCarAsPassenger.h"
 
+#include <reversiblebugfixes/Bugs.hpp>
+
 #define NOTSA_VANILLA_COLLISIONS // TODO: move to config.h?
 
 using Shape = CCollision::DebugSettings::ShapeShapeCollision::Shape;
@@ -2898,81 +2900,80 @@ bool CCollision::SphereCastVsCaches(
 
     const CColSphere spBws{ spAws.m_vecCenter + velocity, spAws.m_fRadius };
 
-    assert(!numIn || in[0].ent); 
+    assert(numIn <= 0 || in[0].ent); // Otherwise the original would use uninitialized col data for the first region
 
-    // Process entities now
-    for (auto i = 0; i < numIn; ) {
-        const auto entity = in[i].ent;
-        if (!entity) {
-        next:
-            i++;
-            continue;
-        }
+    // State of the current region (Set by the entry that has `ent` set)
+    CCollisionData* ecd{};
+    CColSphere      spAos{}, spBos{}; // Spheres in the entity's (object) space
 
-        const auto ecd = entity->GetColData();
-        if (!ecd) {
-            goto next;
-        }
+    // Only the type and the index are written, `ent` was set at the start of the region (for its first collision),
+    // or cleared by the previous push (for the rest)
+    const auto PushEntry = [&](CColCacheEntry::eType type, uint16 CColCacheEntry::* idxField, uint16 idx) {
+        auto& outEntry     = out[numOut++];
+        outEntry.*idxField = idx;
+        outEntry.type      = type;
 
-        // Have to push this nevertheless
-        // If there are no collisions it will be overwritten
-        out[numOut] = { entity };
+        // The original also clears the next entry
+        out[numOut].ent  = nullptr;
+        out[numOut].type = CColCacheEntry::eType::NONE;
+    };
 
-        auto PushEntry = [&, isFirst = true](CColCacheEntry entry) mutable {
-            // First entry has to keep `entity` set (As this overwrites the initial push above)
-            if (isFirst) {
-                entry.ent = entity;
-                isFirst = false;
+    for (auto i = 0; i < numIn; i++) {
+        const auto& entry = in[i];
+        if (const auto entity = entry.ent) { // Found new region
+            // NOTE: The matrix is allocated (if needed) before the col data is checked, like in the original
+            const auto& entMat = entity->GetMatrix();
+
+            // NOTE: Only this entry is skipped, the original would test the rest of the region with null col data.
+            //       `SphereCastVsEntity` never adds entries for an entity without col data, so we just assert below.
+            ecd = entity->GetColData();
+            if (!ecd) {
+                continue;
             }
-            out[numOut++] = entry;
-        };
+            const auto invEntMat = Invert(entMat);
 
-        // Transform speheres into entity's (object) space
-        const auto invEntMat = Invert(entity->GetMatrix());
-        const CColSphere spAos{ spAws.GetTransformed(invEntMat) },
-                         spBos{ spBws.GetTransformed(invEntMat) };
+            // Transform spheres into entity's (object) space
+            spAos = spAws.GetTransformed(invEntMat);
+            spBos = spBws.GetTransformed(invEntMat);
 
-        const auto verts   = ecd->GetTriVerts();
-        const auto tris    = ecd->GetTris();
-        const auto triPls  = ecd->GetTriPlanes();
-        const auto spheres = ecd->GetSpheres();
-        const auto bboxes  = ecd->GetBoxes();
+            // Have to push this nevertheless, if there are no collisions it will be overwritten by the next region.
+            // Only these 2 fields are written (like in the original), the first collision (if any) fills in the rest.
+            out[numOut].ent  = entity;
+            out[numOut].type = CColCacheEntry::eType::NONE;
+        }
+        assert(ecd);
 
-        // Now do the tests
-        for (;; i++) {
-            const auto& entry = in[i];
-            if ([&] {
-                using enum CColCacheEntry::eType;
-                switch (entry.type) {
-                case TRIANGLE: {
-                    const auto triIdx = entry.triIdx >= SHRT_MAX // I don'plSpCenterDist have a damn clue why complicate shit so much instead of using a 4th entry type (like `BACKSIDE_TRIANGLE`)
-                        ? (uint16)(-1) - entry.triIdx // Search in file for: BULLSHIT_DETECTOR
-                        : entry.triIdx;
-                    return SphereCastVersusVsPoly(spAos, spBos, tris[triIdx], triPls[triIdx], verts);
+        using enum CColCacheEntry::eType;
+        switch (entry.type) {
+        case TRIANGLE: {
+            if (entry.triIdx < SHRT_MAX) {
+                if (SphereCastVersusVsPoly(spAos, spBos, ecd->GetTris()[entry.triIdx], ecd->GetTriPlanes()[entry.triIdx], ecd->GetTriVerts())) {
+                    PushEntry(TRIANGLE, &CColCacheEntry::triIdx, entry.triIdx);
                 }
-                case SPHERE:
-                    return SphereCastVsSphere(spAos, spBos, spheres[entry.sphIdx]);
-                case BOX:
-                    return SphereCastVsBBox(spAos, spBos, bboxes[entry.boxIdx]);
-                default:
-                    NOTSA_UNREACHABLE();
+            } else { // Backside triangle (Search in file for: BULLSHIT_DETECTOR)
+                // `SphereCastVsEntity` added it after testing it with the spheres swapped, so it has to be re-tested the same way
+                const auto triIdx = (uint16)(-1) - entry.triIdx;
+                if (SphereCastVersusVsPoly(spBos, spAos, ecd->GetTris()[triIdx], ecd->GetTriPlanes()[triIdx], ecd->GetTriVerts())) {
+                    PushEntry(TRIANGLE, &CColCacheEntry::triIdx, entry.triIdx);
                 }
-            }()) { // If there was a collision...
-                PushEntry(entry);
             }
-
-            if (i + 1 >= numIn) { // No more entries
-                goto finished;
-            }
-
-            if (in[i + 1].ent) { // Found new region
-                goto next;
-            }
+            break;
         }
-    
+        case SPHERE:
+            if (SphereCastVsSphere(spAos, spBos, ecd->GetSpheres()[entry.sphIdx])) {
+                PushEntry(SPHERE, &CColCacheEntry::sphIdx, entry.sphIdx);
+            }
+            break;
+        case BOX:
+            if (SphereCastVsBBox(spAos, spBos, ecd->GetBoxes()[entry.boxIdx])) {
+                PushEntry(BOX, &CColCacheEntry::boxIdx, entry.boxIdx);
+            }
+            break;
+        default:
+            NOTSA_UNREACHABLE();
+        }
     }
 
-finished:
     return numOut > 0;
 }
 
@@ -2992,17 +2993,20 @@ bool CCollision::SphereCastVsEntity(
         return false;
     }
 
+    // NOTE: The spheres are transformed (and so the matrix is allocated if needed) before the col data is checked, like in the original
+    const auto invEntMat = Invert(entity->GetMatrix());
+
+    CColSphere spAos{ spAws.GetTransformed(invEntMat) }; // os = object space
+    CColSphere spBos{ spBws.GetTransformed(invEntMat) };
+    if (!notsa::bugfixes::CCollision_SphereCastVsEntity_SphereBRadius) {
+        spBos.m_fRadius = spAws.m_fRadius; // The original uses spAws's radius for spBos too
+    }
+
     const auto ecm = entity->GetColModel();
     const auto ecd = ecm->GetData();
     if (!ecd) {
         return false;
     }
-
-    const auto invEntMat = Invert(entity->GetMatrix());
-
-    // There was a bug (Noteably spBws's spRadius was set to spAws's, I've fixed that here)
-    CColSphere spAos{ spAws.GetTransformed(invEntMat) }, // os = object space
-               spBos{ spBws.GetTransformed(invEntMat) };
 
     if (!SphereCastVsBBox(spAos, spBos, ecm->GetBoundingBox())) {
         return false;
@@ -3055,7 +3059,7 @@ bool CCollision::SphereCastVsEntity(
                 }
             }
 
-            if (gbTryDoubleSidedCollision && std::abs(triPl.m_normal.z < 0.05f) && SphereCastVersusVsPoly(spBos, spAos, tri, triPl, verts)) {
+            if (gbTryDoubleSidedCollision && std::abs(triPl.GetNormal().z) < 0.05f && SphereCastVersusVsPoly(spBos, spAos, tri, triPl, verts)) {
                 if (AddEntryToColCache(TRIANGLE, (uint16)(-1) - triIdx)) { // Search in file for: BULLSHIT_DETECTOR
                     return true;
                 }
