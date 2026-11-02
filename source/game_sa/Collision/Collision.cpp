@@ -1254,6 +1254,53 @@ bool CCollision::ProcessDiscCollision(
     return false;
 }
 
+/*!
+* Check if the point is inside the triangle, with both projected onto the axis plane given by the triangle plane's orientation
+* The original inlines this into `TestLineTriangle`, `ProcessLineTriangle`, `ProcessVerticalLineTriangle` and `IsStoredPolyStillValidVerticalLine`
+* @notsa
+*/
+static bool IsPointInProjectedTriangle(CColTrianglePlane::Orientation orientation, const CVector& va, const CVector& vb, const CVector& vc, const CVector& ip) {
+    using enum CColTrianglePlane::Orientation;
+
+    // Get the points relative to the plane's orientation
+    // This way the bound checks can be done in 2D
+    const auto Project = [orientation](const CVector& v) -> CVector2D {
+        switch (orientation) {
+        case POS_X:
+        case NEG_X: return { v.y, v.z };
+        case POS_Y:
+        case NEG_Y: return { v.z, v.x };
+        case POS_Z:
+        case NEG_Z: return { v.x, v.y };
+        default:    NOTSA_UNREACHABLE();
+        }
+    };
+
+    // The `POS_` orientations swap `vb` and `vc` (The normal is `(c - a) x (b - a)`)
+    const auto isPos = orientation == POS_X || orientation == POS_Y || orientation == POS_Z;
+    const auto pl_va = Project(va);
+    const auto pl_vb = Project(isPos ? vc : vb);
+    const auto pl_vc = Project(isPos ? vb : vc);
+    const auto pl_ip = Project(ip);
+
+    // This is our triangle:
+    // pl_vc---pl_vb
+    //    \     /
+    //     \   /
+    //      \ /
+    //     pl_va
+    // We can use the "2v2 cross product" to check on which side
+    // a vector is of another. Test is true if point is inside of all edges.
+    // NOTE: The original only rejects the point if a cross product is below/above 0, so NaN doesn't reject it
+    const auto pl_ip_a = pl_ip - pl_va;
+    if ((pl_vb - pl_va).Cross(pl_ip_a) < 0.0f) {
+        return false;
+    }
+    if ((pl_vc - pl_va).Cross(pl_ip_a) > 0.0f) {
+        return false;
+    }
+    return !((pl_vc - pl_vb).Cross(pl_ip - pl_vb) < 0.0f);
+}
 
 /*!
 * Process line-triangle intersection, internal function (used to implement `ProcessLineTriangle` and `TestLineTriangle`)
@@ -1292,8 +1339,9 @@ bool NOTSA_FORCEINLINE ProcessLineTriangle_Internal(
     const auto plNormDotLnOrigin = plane.GetPtDotNormal(line.m_vecStart);
 
     // Check if both points are above or below the plane, if so, no chance of intersection
-    if (std::signbit(plNormDotLnOrigin) == std::signbit(plane.GetPtDotNormal(line.m_vecEnd))) {
-return false;
+    // (A line starting or ending on the plane carries on, like in the original)
+    if (!(plNormDotLnOrigin * plane.GetPtDotNormal(line.m_vecEnd) <= 0.f)) {
+        return false;
     }
 
     // Magnitude of line on plane
@@ -1311,7 +1359,7 @@ return false;
 
     const auto t = plNormDotLnOrigin / plLnMag;
     if constexpr (!TestOnly) {
-        if (t >= *inOutMaxTouchDist) {
+        if (!(t < *inOutMaxTouchDist)) { // A NaN `t` (line in the plane) is rejected too
             return false;
         }
     }
@@ -1322,64 +1370,7 @@ return false;
         *outIP = ip;
     }
 
-    // Get the points relative to the plane's orientation
-    // This way the bound checks can be done in 2D
-    const auto [pl_va, pl_vb, pl_vc, pl_ip] = [&]() -> std::tuple<CVector2D, CVector2D, CVector2D, CVector2D> {
-	    // We do the test in 2D.
-        // With the plane direction we can figure out how to project the vectors.
-	    // normal = (c - a) x (b - a)
-        using enum CColTrianglePlane::Orientation;
-	    switch (plane.m_orientation){
-	    case POS_X: return {
-            {va.y, va.z},
-            {vc.y, vc.z},
-            {vb.y, vb.z},
-            {ip.y, ip.z}
-        };
-        case NEG_X: return {
-            {va.y, va.z},
-            {vb.y, vb.z},
-            {vc.y, vc.z},
-            {ip.y, ip.z}
-        };
-        case POS_Y: return {
-            {va.z, va.x},
-            {vc.z, vc.x},
-            {vb.z, vb.x},
-            {ip.z, ip.x}
-        };
-        case NEG_Y: return {
-            {va.z, va.x},
-            {vb.z, vb.x},
-            {vc.z, vc.x},
-            {ip.z, ip.x}
-        };
-        case POS_Z: return {
-            {va.x, va.y},
-            {vc.x, vc.y},
-            {vb.x, vb.y},
-            {ip.x, ip.y}
-        };
-        case NEG_Z: return {
-			{va.x, va.y},
-			{vb.x, vb.y},
-			{vc.x, vc.y},
-			{ip.x, ip.y}
-		};
-	    default: NOTSA_UNREACHABLE();
-	    }
-    }();
-
-	// This is our triangle:
-	// pl_vc---pl_vb
-	//    \     /
-	//     \   /
-	//      \ /
-	//     pl_va
-	// We can use the "2v2 cross product" to check on which side
-	// a vector is of another. Test is true if point is inside of all edges.
-    const auto pl_ip_a = pl_ip - pl_va;
-    if ((pl_vb - pl_va).Cross(pl_ip_a) >= 0.0f && (pl_vc - pl_va).Cross(pl_ip_a) <= 0.0f && (pl_vc - pl_vb).Cross(pl_ip - pl_vb) >= 0.0f) {
+    if (IsPointInProjectedTriangle(plane.m_orientation, va, vb, vc, ip)) {
         if (inOutMaxTouchDist) {
             *inOutMaxTouchDist = t;
         }
@@ -1492,8 +1483,70 @@ bool CCollision::ProcessVerticalLineTriangle(
 ) {
     ZoneScoped;
 
-    // Not really SA, but the only difference is an early out bounds check that I've implemented into `ProcessLineTriangle_Internal`
-    return ProcessLineTriangle(line, verts, tri, plane, colPoint, maxTouchDistance, collPoly);
+    if (!CCollision::s_DebugSettings.ShapeShapeCollision.IsEnabled(Shape::SLINE, Shape::STRI)) {
+        return false;
+    }
+
+    const auto poly          = tri.GetPoly(verts);
+    const auto& [va, vb, vc] = poly.verts;
+    const auto& lnStart      = line.m_vecStart;
+
+    // Quick reject if the line is outside of the triangle's bounding rect
+    // NOTE: If `p` isn't below `a`, it's rejected if it's above both `b` and `c`, so `p` equal to `a` being the largest of the three is rejected too
+    const auto IsOutside = [](float p, float a, float b, float c) {
+        return p < a
+            ? p < b && p < c
+            : p > b && p > c;
+    };
+    if (IsOutside(lnStart.x, va.x, vb.x, vc.x) || IsOutside(lnStart.y, va.y, vb.y, vc.y)) {
+        return false;
+    }
+
+    // Origin of line on the plane
+    const auto plNormDotLnOrigin = plane.GetPtDotNormal(lnStart);
+
+    // Check if both points are above or below the plane, if so, no chance of intersection
+    if (!(plNormDotLnOrigin * plane.GetPtDotNormal(line.m_vecEnd) <= 0.f)) {
+        return false;
+    }
+
+    // Magnitude of line on plane - The line is assumed to be vertical, so the end's X and Y are ignored
+    const auto lnDirZ  = line.m_vecEnd.z - lnStart.z;
+    const auto plLnMag = -plane.GetNormal().z * lnDirZ;
+
+#ifdef FIX_BUGS
+    // Line is (near-)parallel to the plane, no intersection (See `ProcessLineTriangle_Internal`)
+    if (std::abs(plLnMag) < 1e-6f) {
+        return false;
+    }
+#endif
+
+    // Test the point of intersection (with the start's X and Y)
+    const auto t = plNormDotLnOrigin / plLnMag;
+    if (!IsPointInProjectedTriangle(plane.m_orientation, va, vb, vc, { lnStart.x, lnStart.y, lnStart.z + lnDirZ * t })) {
+        return false;
+    }
+    if (!(t < maxTouchDistance)) {
+        return false;
+    }
+
+    colPoint.m_vecPoint      = lnStart + (line.m_vecEnd - lnStart) * t;
+    colPoint.m_vecNormal     = plane.GetNormal();
+
+    colPoint.m_nSurfaceTypeB = tri.m_nMaterial;
+    colPoint.m_nPieceTypeB   = 0;
+    colPoint.m_nLightingB    = tri.m_nLight;
+
+    colPoint.m_nSurfaceTypeA = SURFACE_DEFAULT;
+    colPoint.m_nPieceTypeA   = 0;
+
+    if (collPoly) {
+        *collPoly = poly;
+    }
+
+    maxTouchDistance = t;
+
+    return true;
 }
 
 // 0x416450
@@ -2530,25 +2583,62 @@ int32 CCollision::ProcessColModels(const CMatrix& transformA, CColModel& cmA,
 
 
 // 0x414D70
-bool CCollision::IsStoredPolyStillValidVerticalLine(const CVector& lineOrigin, float lnMag, CColPoint& colPoint, CStoredCollPoly* collPoly) {
+bool CCollision::IsStoredPolyStillValidVerticalLine(const CVector& lineOrigin, float lineEndZ, CColPoint& colPoint, CStoredCollPoly* collPoly) {
     ZoneScoped;
 
     if (!collPoly->valid) {
         return false;
     }
 
-    // Not really SA (I really don'plSpCenterDist feel like copy pasting code :])
-    return ProcessLineTriangle_Internal<true>(
-        CColLine{
-            lineOrigin,
-            { lineOrigin.x, lineOrigin.y, lineOrigin.z * lnMag }
-        },
-        *collPoly,
-        CColTrianglePlane{ *collPoly },
-        nullptr,
-        nullptr,
-        nullptr
-    );
+    const auto Invalidate = [collPoly] {
+        collPoly->valid = false;
+        return false;
+    };
+
+    // The poly is stored in world space, so the plane is calculated as floats (A `CColTrianglePlane` can't hold its offset)
+    const auto& [va, vb, vc] = collPoly->verts;
+    const auto plNorm        = (vc - va).Cross(vb - va).Normalized();
+    const auto plNormOffset  = plNorm.Dot(va);
+    const auto plOrientation = [&] {
+        using enum CColTrianglePlane::Orientation;
+        const auto nx = std::abs(plNorm.x), ny = std::abs(plNorm.y), nz = std::abs(plNorm.z);
+        if (nx > ny && nx > nz) {
+            return plNorm.x > 0.f ? POS_X : NEG_X;
+        }
+        if (ny > nz) {
+            return plNorm.y > 0.f ? POS_Y : NEG_Y;
+        }
+        return plNorm.z > 0.f ? POS_Z : NEG_Z;
+    }();
+
+    // The line goes from `lineOrigin` straight up/down to `lineEndZ`
+    const CVector lineEnd{ lineOrigin.x, lineOrigin.y, lineEndZ };
+
+    // Origin of line on the plane
+    const auto plNormDotLnOrigin = plNorm.Dot(lineOrigin) - plNormOffset;
+
+    // Check if both points are above or below the plane, if so, no chance of intersection
+    if (!(plNormDotLnOrigin * (plNorm.Dot(lineEnd) - plNormOffset) <= 0.f)) {
+        return Invalidate();
+    }
+
+    // Magnitude of line on plane
+    const auto lnDir   = lineEnd - lineOrigin;
+    const auto plLnMag = -lnDir.Dot(plNorm);
+
+#ifdef FIX_BUGS
+    // Line is (near-)parallel to the plane, no intersection (See `ProcessLineTriangle_Internal`)
+    if (std::abs(plLnMag) < 1e-6f) {
+        return Invalidate();
+    }
+#endif
+
+    const auto ip = lineOrigin + lnDir * (plNormDotLnOrigin / plLnMag);
+    if (!IsPointInProjectedTriangle(plOrientation, va, vb, vc, ip)) {
+        return Invalidate();
+    }
+    colPoint.m_vecPoint = ip; // NOTE: Only the point is written
+    return true;
 }
 
 // 0x415230
