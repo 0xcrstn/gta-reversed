@@ -243,6 +243,18 @@ int32 CCarEnterExit::ComputeTargetDoorToExit(const CVehicle* vehicle, const CPed
     return -1;
 }
 
+// NOTSA (Inlined in `GetNearestCarDoor`)
+// Is the ped within 30 degrees of the bike's heading, as seen from the bike (Where the ped is facing doesn't matter)
+static bool IsPedInFrontOfBike(const CPed* ped, const CVehicle* bike) {
+    auto angle = CVector2D{ ped->GetPosition() - bike->GetPosition() }.Heading() - bike->GetHeading();
+    if (angle > PI) {
+        angle -= TWO_PI;
+    } else if (angle < -PI) {
+        angle += TWO_PI;
+    }
+    return std::abs(angle) < PI / 6.f;
+}
+
 // 0x6528F0
 bool CCarEnterExit::GetNearestCarDoor(const CPed* ped, const CVehicle* vehicle, CVector& outPos, int32& doorId) {
     auto driverDraggedOutOffset = vehicle->m_pDriver ? &ms_vecPedQuickDraggedOutCarAnimOffset : nullptr;
@@ -254,14 +266,10 @@ bool CCarEnterExit::GetNearestCarDoor(const CPed* ped, const CVehicle* vehicle, 
 
         if (ped->GetTaskManager().GetActiveTask()->GetTaskType() != TASK_COMPLEX_ENTER_CAR_AS_PASSENGER) {
             if (std::abs(vehicle->GetRight().z) < 0.1f) { // Isn't on it's side
-                // Check if ped is 30 degrees to the left of the vehicle
-                // Original code used atan and whatnot, but this achieves the same result
-                if (DotProduct2D(vehicle->GetRight(), ped->GetForward()) > 0 // On the left
-                 && DotProduct2D(vehicle->GetForward(), ped->GetForward()) > std::cos(PI / 6.f)
-                ) {
-                    if ((ped->IsPlayer() && ped->GetPlayerData()->m_fMoveBlendRatio > 1.5f && doorId == 0) 
-                    || (!ped->IsPlayer() && ped->m_nPedType != PED_TYPE_COP && ped->m_nMoveState == PEDMOVE_RUN && ped->m_pStats->m_nTemper > 65 && doorId == 0)
-                    ) {
+                if (IsPedInFrontOfBike(ped, vehicle)) {
+                    if ((ped->IsPlayer() && ped->GetPlayerData()->m_fMoveBlendRatio > 1.5f && doorId == 0)
+                        || (!ped->IsPlayer() && ped->m_nPedType != PED_TYPE_COP && ped->m_nMoveState == PEDMOVE_RUN && ped->m_pStats->m_nTemper > 65 && doorId == 0)
+                        || doorId == 18) {
                         // 18 here is probably either from eBikeNodes or eQuadNodes, not sure?
                         if (IsRoomForPedToLeaveCar(vehicle, 18)) {
                             doorId = 18;
