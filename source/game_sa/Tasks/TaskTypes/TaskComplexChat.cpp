@@ -61,7 +61,7 @@ CTask* CTaskComplexChat::CreateFirstSubTask(CPed* ped) {
         return new CTaskSimpleStandStill(999'999);
     }
 
-    if (m_GlobalSpeechContext != eGlobalSpeechContext::CTX_GLOBAL_UNK) {
+    if (m_GlobalSpeechContext > eGlobalSpeechContext::CTX_GLOBAL_UNK) { // Signed compare in the original (0x682E53)
         ped->Say(m_GlobalSpeechContext);
     }
 
@@ -89,7 +89,7 @@ CTask* CTaskComplexChat::ControlSubTask(CPed* ped) {
         return nullptr;
     }
 
-    const auto partnerChatTask = m_ChatPartner->GetTaskManager().Find<CTaskComplexChat>();
+    const auto partnerChatTask = m_ChatPartner->GetTaskManager().Find<CTaskComplexChat>(false); // All primary tasks, not just the active one (0x6830A9)
     if (partnerChatTask) {
         if (partnerChatTask->m_Stage < m_Stage || !partnerChatTask->m_TaskFinished && m_IsChatter == partnerChatTask->m_IsChatter) {
             m_TaskFinished = true;
