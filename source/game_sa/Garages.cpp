@@ -101,16 +101,20 @@ void CGarages::Update() {
     TheCamera.m_pToGarageWeAreIn = nullptr;
     TheCamera.m_pToGarageWeAreInForHackAvoidFirstPerson = nullptr;
 
-    for (int32 i = 0; auto& garage : aGarages) {
-        garage.Update(i++);
+    for (auto&& [i, garage] : rngv::enumerate(aGarages)) {
+        if (garage.m_nType == eGarageType::INVALID) {
+            continue;
+        }
+        garage.Update((int32)i);
     }
 
     if (CTimer::GetFrameCounter() % 16 != 12) // todo: magic number
         return;
 
-    auto& garageToCheck = GetGarage(LastUpdatedGarageId++);
-    if (LastUpdatedGarageId >= std::size(aGarages))
+    if (++LastUpdatedGarageId >= std::size(aGarages)) {
         LastUpdatedGarageId = 0;
+    }
+    auto& garageToCheck = GetGarage(LastUpdatedGarageId);
 
     if (garageToCheck.m_nType == eGarageType::INVALID)
         return;
