@@ -18,7 +18,7 @@ public:
     static void LoadCdDirectory();
     static void RequestGeometry(int32 modelId, uint32 crc);
     static int32 RequestTexture(uint32 crc);
-    static void PreprocessClothesDesc(CPedClothesDesc& desc, bool a2);
+    static void  PreprocessClothesDesc(CPedClothesDesc& desc, bool isCutscenePlayer);
     static void ReleaseGeometry(int32 numToRelease);
     static void AddWeightToBoneVertex(float(&out_weights)[8], uint8(&bone_vertex_indices)[8], float weight_to_add, RwUInt32 target_vertex);
     static void StoreBoneArray(RpClump* clump, int32 a2);
