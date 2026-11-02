@@ -112,6 +112,11 @@ inline const ReversibleBugFix CTaskSimpleSlideToCoord_Constructor_UninitializedT
                    "and a ped that can't reach the target position or heading slides forever",
     .Credit      = "W4liss0n"
 };
+inline const ReversibleBugFix CTaskSimpleSwim_ProcessEffects_AirBubblesPosition{
+    .Name        = "CTaskSimpleSwim::ProcessEffects - Air bubbles position",
+    .Description = "Underwater air bubbles come out of the ped's mouth (`BONE_JAW`) instead of `BONE_SPINE1`",
+    .Credit      = "Izzotop, MitchellTobass"
+};
 inline const ReversibleBugFix CPedGeometryAnalyser_ComputeRouteRoundSphere_IncorrectDetourPosition{
     .Name        = "CPedGeometryAnalyser::ComputeRouteRoundSphere - Incorrect detour position",
     .Description = "Fix incorrect calculation of detour position in `CPedGeometryAnalyser::ComputeRouteRoundSphere` due to the direction being calculated in 3D instead of 2D (Sometimes giving points that would lead the ped to go into the sphere, instead of around it)",
