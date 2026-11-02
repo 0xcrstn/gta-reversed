@@ -119,7 +119,7 @@ void BoneNode_c::QuatToEuler(const RtQuat& quat, CVector& outAngles) {
     outAngles.y = RadiansToDegrees(std::asin(-sinPitch)); // Simplified from the original atan2 logic
     
     // Code simplified here, originally it was divided by some value, but it didn't change the result, so we can skip that step
-    if (approxEqual(sinPitch, 1.f, 0.0001f)) { // Gimbal lock case: Yaw and Roll collapse into a single degree of freedom
+    if (std::abs(sinPitch) == 1.0f) { // Gimbal lock case (exactly at either pole): Yaw and Roll collapse into a single degree of freedom
         outAngles.x = RadiansToDegrees(std::atan2(-2.0f * (y * z - x * w), 1.0f - 2.0f * (x * x + z * z)));
         outAngles.z = 0.0f;
     } else { // General case:
