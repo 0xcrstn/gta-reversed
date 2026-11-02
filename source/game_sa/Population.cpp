@@ -1489,26 +1489,22 @@ eModelID CPopulation::PickRiotRoadBlockCar() {
     // First try gang cars
     const auto baseIdx = CGeneral::GetRandomNumberInRange(0u, (size_t)TOTAL_GANGS);
     for (size_t i{}; i < TOTAL_GANGS; i++) {
-        const auto model = PickGangCar((eGangID)(baseIdx + i));
+        const auto model = PickGangCar((eGangID)((baseIdx + i) % TOTAL_GANGS)); // The original wraps around
         if (model != MODEL_INVALID) {
             return model;
         }
     }
 
-    // Try appropriate/inappropriate cars
+    // Try appropriate/inappropriate cars, the first suitable one wins
     for (auto grp : { &m_AppropriateLoadedCars, &m_InAppropriateLoadedCars }) {
-        for (auto i{ grp->CountMembers() }; i --> 0;) { // TODO: Use `grp->GetAllModels()`
-            const auto model = (eModelID)grp->GetMember(i);
-            if (model == MODEL_INVALID) {
-                continue;
-            }
+        for (const auto model : grp->GetAllModels()) {
             switch (CModelInfo::GetVehicleModelInfo(model)->m_nVehicleClass) {
             case VEHICLE_CLASS_BIG:
             case VEHICLE_CLASS_MOPED:
             case VEHICLE_CLASS_MOTORBIKE:
                 continue;
             }
-            return model;
+            return (eModelID)model;
         }
     }
 
