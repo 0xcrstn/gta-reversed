@@ -159,8 +159,6 @@ bool CDoor::ProcessImpact(CVehicle* vehicle, Const CVector& oldMoveSpeed, Const 
     CVector oldVelocity = oldTurnSpeed.Cross(offset) + oldMoveSpeed;
     CVector acceleration = velocity - oldVelocity;
 
-    CMatrix mat(vehicle->GetMatrix());
-
     CVector direction;
     switch (m_dirn & DOOR_EXTRA_DIRN_MASK) {
     case DOOR_AXIS_X:     direction = vehicle->GetRight(); break;
@@ -173,19 +171,27 @@ bool CDoor::ProcessImpact(CVehicle* vehicle, Const CVector& oldMoveSpeed, Const 
     }
 
     // Angular velocity along the desired axis
-    assert(m_axis != DOOR_AXIS_Y); // Test
     const auto cross = acceleration.Cross(direction);
-    float ang = cross[m_axis];
+    const auto ang   = [&] {
+        switch (m_axis) {
+        case DOOR_AXIS_X: return cross.x;
+        case DOOR_AXIS_Z: return cross.z;
+        default:
+            // BUG: The original has no case for `DOOR_AXIS_Y` (used by boat, heli and plane doors), so the angle is
+            //      left uninitialised, and its stack slot still holds `oldVelocity.y`
+            return notsa::bugfixes::GenericUB && m_axis == DOOR_AXIS_Y
+                ? cross.y
+                : oldVelocity.y;
+        }
+    }();
 
     const float limit = CGeneral::GetRandomNumberInRange(0.75f, 1.5f) * POP_OPEN_DOOR_ACCEL_LIMIT;
 
-    // Is there enough acceleration to open the door?
-    const bool posOpenRotation = m_openAngle >= m_closedAngle;
-    if (posOpenRotation) {
-        return ang > limit;
-    } else {
+    // Is there enough acceleration to open the door? (The original tests `open < closed`, so NaN angles take the positive branch)
+    if (m_openAngle < m_closedAngle) {
         return ang < -limit;
     }
+    return ang > limit;
 }
 
 // 0x6F4790
