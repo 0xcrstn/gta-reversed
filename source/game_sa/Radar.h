@@ -256,7 +256,7 @@ public:
     static void SetCoordBlipAppearance(tBlipHandle blip, eBlipAppearance appearance);
     static void SetBlipFriendly(tBlipHandle blip, bool friendly);
     static void SetBlipEntryExit(tBlipHandle blip, CEntryExit* enex);
-    static void ShowRadarTrace(float x, float y, uint32 size, CRGBA color);
+    static void        ShowRadarTrace(float x, float y, uint32 size, uint8 r, uint8 g, uint8 b, uint8 a);
     static void ShowRadarTraceWithHeight(float x, float y, uint32 size, uint32 r, uint32 g, uint32 b, uint32 a, eRadarTraceHeight height);
     static void ShowRadarMarker(CVector posn, uint32 color, float radius);
     static uint32 GetRadarTraceColour(eBlipColour color, bool bright, bool friendly);

@@ -817,26 +817,17 @@ void Limit(float& x, float& y) {
 /*!
  * @brief Draws a square coordinate blip to the map.
  * @addr 0x583F40
+ * @note The color is passed as 4 separate dwords (like in `ShowRadarTraceWithHeight`), not as a `CRGBA`.
  */
-void CRadar::ShowRadarTrace(float x, float y, uint32 size, CRGBA color) {
+void CRadar::ShowRadarTrace(float x, float y, uint32 size, uint8 r, uint8 g, uint8 b, uint8 a) {
     Limit(x, y);
     RwRenderStateSet(rwRENDERSTATETEXTURERASTER, RWRSTATE(NULL));
 
     // Draw background rect - Since it's 1px bigger on each side when we draw the next rect on top of it will act as a border
-    CSprite2d::DrawRect({
-        x - float(size - 1),
-        y - float(size - 1),
-        x + float(size + 1),
-        y + float(size + 1)
-    }, { 0, 0, 0, color.a });
+    CSprite2d::DrawRect({ x - float(size + 1), y - float(size + 1), x + float(size + 1), y + float(size + 1) }, { 0, 0, 0, a });
 
     // Now draw actual rect on top of it
-    CSprite2d::DrawRect({
-        x - float(size),
-        y - float(size),
-        x + float(size),
-        y + float(size)
-    }, color);
+    CSprite2d::DrawRect({ x - float(size), y - float(size), x + float(size), y + float(size) }, { r, g, b, a });
 }
 
 /*!
