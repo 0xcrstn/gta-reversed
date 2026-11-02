@@ -534,8 +534,13 @@ void CPlantMgr::_ColEntityCache_Update(const CVector& cameraPos, bool fast) {
     CWorld::AdvanceCurrentScanCode();
     CWorld::IterateSectorsOverlappedByRect({ cameraPos, PROC_OBJECTS_MAX_DISTANCE }, [cameraPos](int32 x, int32 y) {
         for (auto* const item : CWorld::GetSector(x, y).Buildings) {
-            if (item->m_bIsProcObject || item->IsScanCodeCurrent() || !item->IsInCurrentArea())
+            if (item->m_bIsProcObject || item->IsScanCodeCurrent()) {
                 continue;
+            }
+            item->SetCurrentScanCode(); // 0x5DC7E3 - Visit each building only once, even if it's in multiple sectors
+            if (!item->IsInCurrentArea()) {
+                continue;
+            }
 
             if (auto mi = item->GetModelInfo(); mi->GetModelType() == MODEL_INFO_ATOMIC && mi->bAtomicFlag0x200) {
                 bool foundEntity = false;
@@ -547,7 +552,11 @@ void CPlantMgr::_ColEntityCache_Update(const CVector& cameraPos, bool fast) {
                 }
                 if (!m_CloseColEntListHead || !foundEntity) {
                     if (_CalcDistanceSqrToEntity(item, cameraPos) <= PROC_OBJECTS_MAX_DISTANCE_SQUARED) {
-                        if (!m_UnusedColEntListHead || !m_UnusedColEntListHead->AddEntry(item)) {
+                        if (!m_UnusedColEntListHead) {
+                            return false;
+                        }
+                        m_UnusedColEntListHead->AddEntry(item); // 0x5DC844 - If this fails (no col triangles) the scan goes on
+                        if (!m_UnusedColEntListHead) {
                             return false;
                         }
                     }
