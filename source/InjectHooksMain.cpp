@@ -798,6 +798,7 @@ void InjectHooksMain() {
     CReplay::InjectHooks();
     CDarkel::InjectHooks();
     CGeneral::InjectHooks();
+    CMaths::InjectHooks();
     CGamma::InjectHooks();
     CHudColours::InjectHooks();
     CTxdStore::InjectHooks();
