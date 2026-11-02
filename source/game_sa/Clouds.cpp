@@ -466,7 +466,7 @@ void CClouds::Render_MaybeRenderRockstarLogo(float colorBalance) {
             continue;
         }
 
-        const auto cc = CalculateColorWithBalance(colorB, (float)(rand() % 32) * 0.015f);
+        const auto cc = CalculateColorWithBalance(colorRG, (float)(rand() % 32) * 0.015f);
 
         starSizeScr *= STARS_SIZES[posIdx] * 0.8f;
 
@@ -482,11 +482,11 @@ void CClouds::Render_MaybeRenderRockstarLogo(float colorBalance) {
     //
     // Draw the `*`
     //
+    const auto cc = (uint8)((float)colorRG * ((float)(rand() % 128) * 0.0015625f + 0.5f)); // 0x713F7A - Done before projecting the star, so even if it's off-screen
+
     CVector   lastStarPosScr;
     CVector2D lastStarSizeScr;
     if (CSprite::CalcScreenCoors(camPos + STAR_OFFSET_FROM_CAMERA, &lastStarPosScr, &lastStarSizeScr.x, &lastStarSizeScr.y, false, true)) {
-        const auto cc = CalculateColorWithBalance(colorB, (float)(rand() % 128) * 0.0015625f + 0.5f);
-
         lastStarSizeScr.x *= 5.f;
         lastStarSizeScr.y *= 5.f;
 
