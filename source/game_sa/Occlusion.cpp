@@ -98,7 +98,9 @@ bool COcclusion::IsPositionOccluded(CVector pos, float radius) {
     const auto screenRadius = radius * longEdge;
     const auto screenDepth  = scrPos.z - radius;
     return rng::any_of(GetActiveOccluders(), [=](auto&& o) {
-        return o.GetDistToCam() <= screenDepth
+        // The original reads the stored depth sign-extended (it's negative for occluders close to the camera)
+        // and requires it to be less than the position's depth (0x720141)
+        return static_cast<float>(static_cast<int16>(o.m_DistToCam)) < screenDepth
             && o.IsPointWithinOcclusionArea(scrPos, screenRadius)
             && o.IsPointBehindOccluder(pos, radius);
     });
