@@ -222,19 +222,24 @@ int32 CCarEnterExit::ComputeTargetDoorToExit(const CVehicle* vehicle, const CPed
         return 10;
     }
 
-    // Theoritically the rest here is the same as `ComputeTargetDoorToEnterAsPassenger`
-    // but I'm not quite sure, as in that function they just check `bIsBus`, while here they check the anim groups
-    // So, using the below switch I make sure the theory is right.
+    // Unlike `ComputeTargetDoorToEnterAsPassenger` this checks the anim group (not `bIsBus`),
+    // and it does so before looking for the ped, so in a bus/coach every ped (even one that isn't inside) gets door 8
     switch (vehicle->GetAnimGroupId()) {
     case ANIM_GROUP_COACHCARANIMS:
     case ANIM_GROUP_BUSCARANIMS:
-        assert(vehicle->vehicleFlags.bIsBus);
+        return 8;
     }
 
-    if (const auto optIndex = vehicle->GetPassengerIndex(ped)) {
-        return ComputeTargetDoorToEnterAsPassenger(vehicle, *optIndex);
+    // Only the first 3 passenger seats are checked, regardless of `m_nMaxPassengers`
+    if (vehicle->m_apPassengers[0] == ped) {
+        return (vehicle->IsBike() || vehicle->m_pHandlingData->m_bTandemSeats) ? 11 : 8;
     }
-
+    if (vehicle->m_apPassengers[1] == ped) {
+        return 11;
+    }
+    if (vehicle->m_apPassengers[2] == ped) {
+        return 9;
+    }
     return -1;
 }
 
