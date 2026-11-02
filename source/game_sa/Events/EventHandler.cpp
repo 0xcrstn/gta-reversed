@@ -1461,8 +1461,13 @@ void CEventHandler::ComputeInWaterResponse(CEventInWater* e, CTask* tactive, CTa
 }
 
 // 0x4BAFE0
-void CEventHandler::ComputeInteriorUseInfoResponse(CEventInteriorUseInfo* e, CTaskInteriorUseInfo* tUseInfo, CTask* tsimplest) {
-    m_EventResponseTask = tUseInfo->Clone();
+void CEventHandler::ComputeInteriorUseInfoResponse(CEventInteriorUseInfo* e, CTask* tactive, CTask* tsimplest) {
+    m_EventResponseTask = new CTaskInteriorUseInfo{
+        e->m_InteriorInfo,
+        e->m_Interior,
+        static_cast<int32>(e->m_ActionAnimTime),
+        e->m_nLoopAction != 0
+    };
 }
 
 // 0x4B9FF0
@@ -3040,7 +3045,7 @@ void CEventHandler::ComputeEventResponseTask(CEvent* e, CTask* pAbortedTaskEvent
         ComputeVehicleOnFireResponse(static_cast<CEventVehicleOnFire*>(e), tactive, tsimplest);
         break;
     case EVENT_INTERIOR_USE_INFO:
-        ComputeInteriorUseInfoResponse(static_cast<CEventInteriorUseInfo*>(e), notsa::dyn_cast_if_present<CTaskInteriorUseInfo>(tactive), tsimplest);
+        ComputeInteriorUseInfoResponse(static_cast<CEventInteriorUseInfo*>(e), tactive, tsimplest);
         break;
     case EVENT_SIGNAL_AT_PED:
         ComputeSignalAtPedResponse(static_cast<CEventSignalAtPed*>(e), tactive, tsimplest);
