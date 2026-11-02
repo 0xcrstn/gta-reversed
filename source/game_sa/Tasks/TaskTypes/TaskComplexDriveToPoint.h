@@ -21,9 +21,13 @@ public:
     static constexpr auto Type = TASK_COMPLEX_CAR_DRIVE_TO_POINT;
 
     CTaskComplexDriveToPoint(CVehicle* vehicle, const CVector& point, float speed, int32 arg4, eModelID carModelIndexToCreate, float radius, eCarDrivingStyle drivingStyle);
+    // 0x63CE70 (scalar deleting destructor in the vtable: 0x643280)
     ~CTaskComplexDriveToPoint() override = default;
 
-    eTaskType GetTaskType() const override { return Type;}
+    // 0x63CE60
+    eTaskType GetTaskType() const override { return Type; }
+
+    // 0x63DDE0
     CTask* Clone() const override { return new CTaskComplexDriveToPoint(m_Veh, m_Point, m_CruiseSpeed, field_30, m_DesiredCarModel, m_Radius, static_cast<eCarDrivingStyle>(m_CarDrivingStyle)); }
 
     void SetUpCar() override;
@@ -36,5 +40,19 @@ public:
 
     /// NOTSA
     void GoToPoint(const CVector& point);
+
+private:
+    friend void InjectHooksMain();
+    static void InjectHooks();
+
+    CTaskComplexDriveToPoint* Constructor(CVehicle* vehicle, const CVector& point, float speed, int32 arg4, eModelID carModelIndexToCreate, float radius, eCarDrivingStyle drivingStyle) {
+        this->CTaskComplexDriveToPoint::CTaskComplexDriveToPoint(vehicle, point, speed, arg4, carModelIndexToCreate, radius, drivingStyle);
+        return this;
+    }
+
+    CTaskComplexDriveToPoint* Destructor() {
+        this->CTaskComplexDriveToPoint::~CTaskComplexDriveToPoint();
+        return this;
+    }
 };
 VALIDATE_SIZE(CTaskComplexDriveToPoint, 0x3C);
