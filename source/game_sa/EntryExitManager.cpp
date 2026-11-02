@@ -155,12 +155,12 @@ void CEntryExitManager::Update() {
 
 // 0x43E410
 void CEntryExitManager::AddEntryExitToStack(CEntryExit* enex) {
-    enex = enex->GetLinkedOrThis();
-    
-    if (ms_entryExitStackPosn > 0 && ms_entryExitStack[ms_entryExitStackPosn - 1] == enex) {
+    const auto* const linked = enex->GetLinkedOrThis();
+
+    if (ms_entryExitStackPosn > 0 && ms_entryExitStack[ms_entryExitStackPosn - 1] == linked) {
         ms_entryExitStackPosn--;
-    } else if (enex->m_nArea != AREA_CODE_NORMAL_WORLD) {
-        ms_entryExitStack[ms_entryExitStackPosn++] = enex;
+    } else if (linked->m_nArea != AREA_CODE_NORMAL_WORLD) {
+        ms_entryExitStack[ms_entryExitStackPosn++] = enex; // NOTE: Pushes `enex` itself, not the linked one (0x43E44C)
     } else {
         ms_entryExitStackPosn = 0;
     }
@@ -174,7 +174,7 @@ void CEntryExitManager::AddEntryExitToStack(CEntryExit* enex) {
 * @param timeOff Unused
 * @param name Name of the entry exit, may be nullptr. If flag `CREATE_LINKED_PAIR is set it is also used to identify the linked pair. (In this case it can't be nullptr)
 *
-* @returns The pool index of the created entry exit, 0 if failed.
+* @returns The pool index of the created entry exit, -1 if failed.
 */
 int32 CEntryExitManager::AddOne(
     float centerX, float centerY, float centerZ,
@@ -194,7 +194,7 @@ int32 CEntryExitManager::AddOne(
 #ifdef FIX_BUGS
         return -1;
 #else
-        return 0; // Returns an actually valid index, not good
+        return -1; // The original returns -1 too (`CEntity::CreateEffects` checks for it)
 #endif
     }
 
@@ -319,7 +319,7 @@ void CEntryExitManager::LinkEntryExit(CEntryExit* enex) {
 
     if (const auto linkedEnEx{ mp_poolEntryExits->GetAt(linkedEnExIdx) }) {
         enex->m_pLink = linkedEnEx;
-        if (linkedEnEx->m_pLink) {
+        if (!linkedEnEx->m_pLink) {
             linkedEnEx->m_pLink = enex;
         }
         // ?????
@@ -344,8 +344,10 @@ int32 CEntryExitManager::GetEntryExitIndex(const char* name, uint16 enabledFlags
 
 // 0x43ED80
 void CEntryExitManager::ResetAreaCodeForVisibleObjects() {
-    while (ms_numVisibleEntities) {
-        ms_visibleEntityList[--ms_numVisibleEntities]->SetAreaCode((eAreaCodes)ms_oldAreaCode);
+    // NOTE: Post-decrement like the original (0x43EDA9), so this leaves `ms_numVisibleEntities` at -1
+    //       (`SetAreaCodeForVisibleObjects` resets it to 0 before using it)
+    while (ms_numVisibleEntities--) {
+        ms_visibleEntityList[ms_numVisibleEntities]->SetAreaCode((eAreaCodes)ms_oldAreaCode);
     }
 }
 
