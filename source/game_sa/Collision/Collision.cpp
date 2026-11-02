@@ -2783,17 +2783,6 @@ int32 CCollision::GetPrincipleAxis(const CVector& normal) {
         : 2; // Y
 }
 
-// NOTSA
-bool IsPointInPoly2D(CVector2D pt, CVector2D a, CVector2D b, CVector2D c) {
-    // Code they used originally: https://stackoverflow.com/revisions/2049593/4
-    // It's slower than than the one below.
-    
-    // Based on: https://stackoverflow.com/a/9755252
-    const auto pt_a = pt - a;
-    const bool s_ab = (b - a).Cross(pt_a) > 0.f;
-    return (c - a).Cross(pt_a) > 0.f != s_ab && (c - b).Cross(pt - b) > 0.f == s_ab;
-}
-
 // 0x415730
 bool CCollision::PointInPoly(
     const CVector& testPt,
@@ -2811,12 +2800,23 @@ bool CCollision::PointInPoly(
     };
 
     // Shuffle vectors for the principal axis
-    const auto Do = [shuffle = lut[GetPrincipleAxis(normal) / 2]](const CVector& v) {
+    const auto axis = GetPrincipleAxis(normal);
+    const auto Do   = [shuffle = lut[axis / 2]](const CVector& v) {
         return CVector2D{ v[shuffle[0]], v[shuffle[1]] };
     };
 
-    // Now we can do the test in 2D
-    return IsPointInPoly2D(Do(testPt), Do(verts[0]), Do(verts[1]), Do(verts[2]));
+    // Now we can do the test in 2D: The point is inside if it's on the same side of all 3 edges.
+    // A point on an edge counts as being on its positive side (negative for the Y axis), like in the original.
+    const auto pt       = Do(testPt);
+    const auto IsOnSide = [&](const CVector& a, const CVector& b) {
+        const auto a2D  = Do(a);
+        const auto side = (pt - a2D).Cross(Do(b) - a2D);
+        return axis == 2 // Y
+            ? side <= 0.f
+            : side >= 0.f;
+    };
+    const auto s0 = IsOnSide(verts[0], verts[1]);
+    return IsOnSide(verts[1], verts[2]) == s0 && IsOnSide(verts[2], verts[0]) == s0;
 }
 
 // 0x415CF0
