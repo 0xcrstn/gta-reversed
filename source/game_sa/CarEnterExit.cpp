@@ -498,18 +498,21 @@ bool CCarEnterExit::IsPathToDoorBlockedByVehicleCollisionModel(const CPed* ped, 
     }
 
     const auto vehMatInv = Invert(*vehicle->m_matrix);
-    const CColLine line{
+
+    CColLine line{
         vehMatInv.TransformPoint(ped->GetPosition()),
         vehMatInv.TransformPoint(pos)
     };
+    line.m_vecEnd.z = line.m_vecStart.z; // The test is done at the ped's height (0x6512EE)
 
-    for (const auto& sp : vehicle->GetColModel()->GetData()->GetSpheres()) {
+    for (CColSphere sp : vehicle->GetColModel()->GetData()->GetSpheres()) {
+        sp.m_vecCenter.z = line.m_vecStart.z; // Same height as the line (0x65131D)
         if (CCollision::TestLineSphere(line, sp)) {
-            return false;
+            return true;
         }
     }
 
-    return true;
+    return false;
 }
 
 // 0x64EEE0
