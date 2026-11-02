@@ -11,13 +11,14 @@ void CGarages::InjectHooks() {
     RH_ScopedInstall(Init, 0x447120);
     RH_ScopedInstall(Init_AfterRestart, 0x448B60);
     RH_ScopedInstall(Shutdown, 0x4471B0);
-    RH_ScopedInstall(AddOne, 0x4471E0, { .Reversed = false });
+    RH_ScopedInstall(AddOne, 0x4471E0);
     RH_ScopedInstall(CloseHideOutGaragesBeforeSave, 0x44A170);
     RH_ScopedInstall(PlayerArrestedOrDied, 0x449E60);
     RH_ScopedInstall(AllRespraysCloseOrOpen, 0x448B30);
     RH_ScopedInstall(IsModelIndexADoor, 0x448AF0);
-    RH_ScopedInstall(FindSafeHouseIndexForGarageType, 0x4489F0, { .Reversed = false });
-    RH_ScopedInstall(FindGarageForObject, 0x44A240, { .Reversed = false });
+    // `CountCarsInHideoutGarage` (0x44A210) keeps its car counter in EDX, `StoreCarInNearestImpoundingGarage` (0x44A3C0) the stored car index in ECX across the call
+    RH_ScopedInstall(FindSafeHouseIndexForGarageType, 0x4489F0, { .StackArgumentsToPreserve = 1, .PreserveRegisters = true });
+    RH_ScopedInstall(FindGarageForObject, 0x44A240);
     RH_ScopedInstall(IsPointWithinHideOutGarage, 0x448900);
     RH_ScopedInstall(IsGarageOpen, 0x447D00);
     RH_ScopedInstall(IsGarageClosed, 0x447D30);
@@ -31,7 +32,7 @@ void CGarages::InjectHooks() {
     RH_ScopedInstall(PrintMessages, 0x447790);
     RH_ScopedInstall(ChangeGarageType, 0x4476D0);
     RH_ScopedInstall(GetGarageNumberByName, 0x447680);
-    RH_ScopedInstall(CountCarsInHideoutGarage, 0x44A210, { .Reversed = false });
+    RH_ScopedInstall(CountCarsInHideoutGarage, 0x44A210);
     RH_ScopedInstall(Load, 0x5D3270);
     RH_ScopedInstall(Save, 0x5D3160);
     RH_ScopedInstall(StopCarFromBlowingUp, 0x448890, { .Reversed = false });
@@ -147,8 +148,41 @@ void CGarages::GivePlayerDetonator() {
 // 0x2	door goes in
 // 0x4	camera follow players
 // TODO...
-void CGarages::AddOne(float x1, float y1, float z1, float frontX, float frontY, float x2, float y2, float z2, uint8 type, uint32 a10, char* name, uint32 argFlags) {
-    return plugin::Call<0x4471E0, float, float, float, float, float, float, float, float, uint8, uint32, char*, uint32>(x1, y1, z1, frontX, frontY, x2, y2, z2, type, a10, name, argFlags);
+int32 CGarages::AddOne(float x1, float y1, float z1, float frontX, float frontY, float x2, float y2, float z2, uint8 type, uint32 a10, char* name, uint32 argFlags) {
+    assert(NumGarages < MAX_NUM_GARAGES);
+
+    auto& garage = GetGarage(NumGarages);
+
+    // The given points are 3 corners of the garage, this is the 4th one
+    const auto x3 = frontX + x2 - x1;
+    const auto y3 = frontY + y2 - y1;
+
+    // Bounding rectangle
+    garage.m_fLeftCoord  = std::min({ x1, frontX, x2, x3 });
+    garage.m_fRightCoord = std::max({ x1, frontX, x2, x3 });
+    garage.m_fFrontCoord = std::min({ y1, frontY, y2, y3 });
+    garage.m_fBackCoord  = std::max({ y1, frontY, y2, y3 });
+
+    garage.m_vPosn       = CVector{ x1, y1, z1 };
+    garage.m_vDirectionA = CVector2D{ frontX - x1, frontY - y1 };
+    garage.m_vDirectionB = CVector2D{ x2 - x1, y2 - y1 };
+    garage.m_fTopZ       = z2;
+
+    // The lengths of the sides are the garage's size
+    garage.m_fWidth = garage.m_vDirectionA.Magnitude();
+    garage.m_vDirectionA /= garage.m_fWidth;
+    garage.m_fHeight = garage.m_vDirectionB.Magnitude();
+    garage.m_vDirectionB /= garage.m_fHeight;
+
+    garage.m_nType         = (eGarageType)type;
+    garage.m_nOriginalType = (eGarageType)type;
+    strncpy(garage.m_anName, name, 7);
+
+    garage.m_bDoorOpensUp         = (argFlags & 1) != 0;
+    garage.m_bDoorGoesIn          = (argFlags & 2) != 0;
+    garage.m_bCameraFollowsPlayer = (argFlags & 4) != 0;
+
+    return NumGarages++;
 }
 
 // 0x44A170
@@ -199,11 +233,8 @@ bool CGarages::IsModelIndexADoor(int32 model) {
     return false;
 }
 
-// wrong
 // 0x4489F0
 int32 CGarages::FindSafeHouseIndexForGarageType(eGarageType type) {
-    return plugin::CallAndReturn<int32, 0x4489F0, eGarageType>(type);
-
     switch (type) {
     case SAFEHOUSE_SANTAMARIA:     return 1;
     case SAGEHOUSE_ROCKSHORE:      return 2;
@@ -230,7 +261,21 @@ int32 CGarages::FindSafeHouseIndexForGarageType(eGarageType type) {
 
 // 0x44A240
 int16 CGarages::FindGarageForObject(CObject* obj) {
-    return plugin::CallAndReturn<int16, 0x44A240, CObject*>(obj);
+    float closestDist = 99999.9f;
+    int16 closestIdx  = -1;
+    for (auto i = 0; i < NumGarages; i++) {
+        auto& garage = GetGarage(i);
+        if (!garage.IsPointInsideGarage(obj->GetPosition(), 7.0f)) {
+            continue;
+        }
+
+        const auto center = garage.m_vPosn + CVector{ garage.m_vDirectionA * (garage.m_fWidth * 0.5f) } + CVector{ garage.m_vDirectionB * (garage.m_fHeight * 0.5f) };
+        if (const auto dist = CVector::Dist(obj->GetPosition(), center); dist < closestDist) {
+            closestDist = dist;
+            closestIdx  = (int16)i;
+        }
+    }
+    return closestIdx;
 }
 
 // 0x447680
@@ -549,5 +594,5 @@ bool CGarages::HasResprayHappened(int16 garageId) {
 
 // 0x44A210
 int32 CGarages::CountCarsInHideoutGarage(eGarageType type) {
-    return plugin::CallAndReturn<int32, 0x44A210, eGarageType>(type);
+    return rng::count_if(aCarsInSafeHouse[FindSafeHouseIndexForGarageType(type)], &CStoredCar::HasCar);
 }
