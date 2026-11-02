@@ -98,6 +98,9 @@ void PlayFrontEndSoundForTrace(CVector fromWorldSpace, CVector toWorldSpace) {
 // 0x723750
 void CBulletTraces::AddTrace(const CVector& from, const CVector& to, float radius, uint32 disappearTime, uint8 alpha)
 {
+    const auto numExistingTraces = rng::count_if(aTraces, [](const CBulletTrace& trace) {
+        return trace.m_bExists;
+    });
     if (CBulletTrace* pTrace = GetFree()) {
         pTrace->m_vecStart = from;
         pTrace->m_vecEnd = to;
@@ -106,11 +109,10 @@ void CBulletTraces::AddTrace(const CVector& from, const CVector& to, float radiu
         pTrace->m_bExists = true;
         pTrace->m_fRadius = radius;
 
-        // Determinate lifetime based on index in aTraces array
+        // Determine the lifetime based on the number of traces that existed before this one (0x723750..0x723805)
         // This way we can kinda make sure all traces will be visible (even if for only a brief amount of time)
-        const auto traceIdx = GetTraceIndex(pTrace);
-        if (traceIdx < 10) {
-            pTrace->m_nLifeTime = (uint32)(traceIdx < 5 ? disappearTime : disappearTime / 2.0f);
+        if (numExistingTraces < 10) {
+            pTrace->m_nLifeTime = (uint32)(numExistingTraces < 5 ? disappearTime : disappearTime / 2.0f);
         } else {
             pTrace->m_nLifeTime = (uint32)(disappearTime / 4.0f);
         }
@@ -145,7 +147,11 @@ void CBulletTraces::AddTrace(const CVector& posMuzzle, const CVector& posBulletH
     dir.Normalise();
 
     const float traceLengthNew = CGeneral::GetRandomNumberInRange(0.0f, traceLengthOriginal);
-    const float fRadius = std::min(CGeneral::GetRandomNumberInRange(2.0f, 5.0f), traceLengthOriginal - traceLengthNew);
+    const float traceLengthRemaining = traceLengthOriginal - traceLengthNew;
+    // 0x726CB2..0x726CD9: If the first random length is shorter than what remains, the original draws another one (which may be longer)
+    const float fRadius = CGeneral::GetRandomNumberInRange(2.0f, 5.0f) < traceLengthRemaining
+        ? CGeneral::GetRandomNumberInRange(2.0f, 5.0f)
+        : traceLengthRemaining;
 
     CVector from = posMuzzle + dir * traceLengthNew;
     CVector to = from + dir * fRadius;
