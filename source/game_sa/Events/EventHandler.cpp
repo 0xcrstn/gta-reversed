@@ -2228,7 +2228,7 @@ void CEventHandler::ComputeSeenPanickedPedResponse(CEventSeenPanickedPed* e, CTa
         if (!thisEventSrc) {
             return nullptr;
         }
-        const auto currEvnt = m_History.GetCurrentEvent();
+        const auto currEvnt = thisEventSrc->AsPed()->GetEventHandlerHistory().GetCurrentEvent(); // 0x4C361D - The panicked ped's current event, not ours
         if (!currEvnt) {
             return nullptr;
         }
@@ -2242,7 +2242,7 @@ void CEventHandler::ComputeSeenPanickedPedResponse(CEventSeenPanickedPed* e, CTa
         case TASK_COMPLEX_FLEE_ENTITY:
             return new CTaskComplexFleeEntity{ currEvntSrc, true, 45.f };
         case TASK_COMPLEX_SMART_FLEE_ENTITY:
-            return new CTaskComplexSmartFleeEntity{ currEvntSrc, false, 45.f };
+            return new CTaskComplexSmartFleeEntity{ currEvntSrc, true, 45.f }; // 0x4C36A5
         default:
             NOTSA_UNREACHABLE(); // Not sure
         }
