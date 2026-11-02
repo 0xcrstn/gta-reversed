@@ -596,6 +596,7 @@ void InjectHooksMain() {
     CPedAttractor::InjectHooks();
     CPedAttractorPedPlacer::InjectHooks();
     CPedShelterAttractor::InjectHooks();
+    CAttractorScanner::InjectHooks();
     BoneNode_c::InjectHooks();
     BoneNodeManager_c::InjectHooks();
     IKChainManager_c::InjectHooks();
