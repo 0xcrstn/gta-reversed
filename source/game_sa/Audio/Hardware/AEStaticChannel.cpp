@@ -155,6 +155,7 @@ void CAEStaticChannel::Stop() {
         }
         SAFE_RELEASE(m_pDirectSound3DBuffer);
     }
+    m_bPaused = false;
 }
 
 // 0x4F0C40
