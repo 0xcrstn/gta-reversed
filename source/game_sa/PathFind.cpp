@@ -19,7 +19,8 @@ auto& ToBeStreamed = StaticRef<std::array<bool, NUM_PATH_MAP_AREAS>>(0x96EFD0);
 auto& XCoorGiven = StaticRef<std::array<float, 64>>(0x96EE80);
 auto& YCoorGiven = StaticRef<std::array<float, 64>>(0x96ED80);
 auto& ZCoorGiven = StaticRef<std::array<float, 64>>(0x96EC80);
-auto& ConnectsToGiven = StaticRef<std::array<std::array<int8, 8>, 64>>(0x96EAC0);
+auto& ConnectsToGiven               = StaticRef<std::array<std::array<int8, 6>, 64>>(0x96EAC0);
+auto& DontWanderGiven               = StaticRef<std::array<bool, 64>>(0x96EC40);
 
 auto& aInteriorNodeLinkedToExterior = StaticRef<std::array<int32, NUM_PATH_INTERIOR_AREAS>>(0x96EA98);
 auto& aExteriorNodeLinkedTo = StaticRef<std::array<CNodeAddress, NUM_PATH_INTERIOR_AREAS>>(0x977B7C);
@@ -705,10 +706,8 @@ void CPathFind::LoadPathFindData(RwStream* stream, int32 areaId) {
         auto& area = m_aNodeSwitches[i];
         SwitchRoadsOffInAreaForOneRegion(area.xMin, area.xMax, area.yMin, area.yMax, area.zMin, area.zMax, area.isOff, area.isCars, areaId, false);
     }
-    for (auto i = 0u; i < NUM_DYNAMIC_LINKS_PER_AREA; ++i) {
-        rng::fill(m_aDynamicLinksBaseIds[i], -1);
-        rng::fill(m_aDynamicLinksIds[i], -1);
-    }
+    rng::fill(m_aDynamicLinksBaseIds[areaId], -1);
+    rng::fill(m_aDynamicLinksIds[areaId], -1);
 }
 
 // 0x44D0F0
@@ -873,6 +872,7 @@ CNodeAddress CPathFind::AddNodeToNewInterior(
     XCoorGiven[idx] = x;
     YCoorGiven[idx] = y;
     ZCoorGiven[idx] = z;
+    DontWanderGiven[idx] = bDontWander;
     rng::copy(std::array{ con0, con1, con2, con3, con4, con5 }, ConnectsToGiven[idx].begin());
     return { (uint16)(NUM_PATH_MAP_AREAS + NewInteriorSlot), (uint16)idx };
 }
@@ -930,12 +930,12 @@ void CPathFind::AddDynamicLinkBetween2Nodes_For1Node(CNodeAddress first, CNodeAd
     auto numAddresses = m_anNumAddresses[first.m_wAreaId];
 
     uint32 firstLinkId;
-    if (static_cast<uint32>(firstPathInfo.m_wBaseLinkId) >= numAddresses)
+    if (static_cast<int32>(firstPathInfo.m_wBaseLinkId) >= static_cast<int32>(numAddresses)) {
         firstLinkId = firstPathInfo.m_wBaseLinkId;
-    else {
+    } else {
         auto* nodeLink = &m_pNodeLinks[first.m_wAreaId][numAddresses];
         auto linkCounter = 0u;
-        while (!nodeLink->IsValid()) {
+        while (nodeLink->IsAreaValid()) { // 0x44E043: Skip the blocks in use
             nodeLink += 12; // No clue why we jump 12 objects each time (Search: MAGIC_NUM_12)
             ++linkCounter;
         }
@@ -950,7 +950,7 @@ void CPathFind::AddDynamicLinkBetween2Nodes_For1Node(CNodeAddress first, CNodeAd
         if (first.m_wAreaId < NUM_PATH_MAP_AREAS) {
             auto& linkInfo = m_aDynamicLinksBaseIds[first.m_wAreaId];
             for (auto i = 0u; i < NUM_DYNAMIC_LINKS_PER_AREA; ++i) {
-                if (linkInfo[i] == -1) {
+                if (linkInfo[i] < 0) {
                     m_aDynamicLinksBaseIds[first.m_wAreaId][i] = firstPathInfo.m_wBaseLinkId;
                     m_aDynamicLinksIds[first.m_wAreaId][i] = firstLinkId;
                     break;
