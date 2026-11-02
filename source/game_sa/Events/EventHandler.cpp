@@ -2042,7 +2042,7 @@ void CEventHandler::ComputePotentialPedCollideResponse(CEventPotentialWalkIntoPe
                     return moveState;
                 }
                 const auto gangLeader = tGangFollower->m_Leader;
-                const auto leaderMoveState = gangLeader->IsPlayer()
+                const auto leaderMoveState = gangLeader->GetPlayerData() // NOTE: Not `IsPlayer()`
                     ? gangLeader->m_nMoveState
                     : gangLeader->GetIntelligence()->GetMoveStateFromGoToTask();
                 if (leaderMoveState >= PEDMOVE_RUN) {
@@ -2052,11 +2052,12 @@ void CEventHandler::ComputePotentialPedCollideResponse(CEventPotentialWalkIntoPe
                 if (!tSeekEntity) {
                     return moveState;
                 }
-                const auto pedToLeaderDistSq = (gangLeader->GetPosition() - m_Ped->GetPosition()).SquaredMagnitude();
 #ifdef FIX_BUGS // Can't do substraction and shit with squared values, it won't work too well
+                const auto pedToLeaderDistSq = (gangLeader->GetPosition() - m_Ped->GetPosition()).SquaredMagnitude();
                 if (std::sqrt(pedToLeaderDistSq) - tSeekEntity->GetMoveStateRadius() < tSeekEntity->GetMoveStateRadius()) {
 #else
-                if (pedToLeaderDistSq - sq(tSeekEntity->GetMoveStateRadius()) < sq(tSeekEntity->GetMoveStateRadius())) {
+                const auto pedToLeaderDistSq2D = (gangLeader->GetPosition() - m_Ped->GetPosition()).SquaredMagnitude2D(); // NOTE: The original uses the 2D distance here
+                if (pedToLeaderDistSq2D - sq(tSeekEntity->GetMoveStateRadius()) < sq(tSeekEntity->GetMoveStateRadius())) {
 #endif
                     return PEDMOVE_WALK;
                 }
