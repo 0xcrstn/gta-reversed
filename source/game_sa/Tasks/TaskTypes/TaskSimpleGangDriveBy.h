@@ -57,6 +57,8 @@ public:
 public:
     static constexpr auto Type = TASK_SIMPLE_GANG_DRIVEBY;
 
+    static void InjectHooks();
+
     CTaskSimpleGangDriveBy(CEntity *target, const CVector *targetPos, float abortRange, int8 frequencyPercentage, eDrivebyStyle drivebyStyle, bool seatRHS);
     ~CTaskSimpleGangDriveBy() override;
 
