@@ -28,7 +28,10 @@ CTaskComplexSmartFleePoint::CTaskComplexSmartFleePoint(CVector const& fleePos, b
     m_safeDist{safeDist},
     m_fleeTimeMs{fleeTimeMs}
 {
-    m_timer.Start(m_fleeTimeMs);
+    // NOTE: Unlike `CTaskTimer::Start`, the original only checks for -1, so other negative times start the timer too
+    if (m_fleeTimeMs != -1) {
+        m_timer = CTaskTimer{ CTimer::GetTimeInMS(), (uint32)m_fleeTimeMs };
+    }
 }
 
 CTaskComplexSmartFleePoint::CTaskComplexSmartFleePoint(const CTaskComplexSmartFleePoint& o)
